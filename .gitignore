@@ -1,0 +1,30 @@
+# things to ignore
+
+*.egg
+*.egg-info/
+*.py[cod]
+*.so
+*~
+.cache
+.coverage
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.tox
+__pycache__/
+build/
+dist/
+htmlcov/
+venv
+
+# These are all links to wrapper.sh. Do not commit them.
+bumpversion.sh
+aktorz.sh
+tox.sh
+
+# Our de-facto manual test output.
+output*
+log.txt
+
+# Tests that aren't ready yet
+tests/x_*
