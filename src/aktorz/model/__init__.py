@@ -1,6 +1,7 @@
 
 import importlib
 from pydantic import (FilePath)
+# from typing import (NewType)
 
 
 class Loader:
@@ -34,8 +35,8 @@ class Loader:
         if not version:
             version = self.version
         # TODO: Do a real semver compatibility check.
+        assert data.schema_version == version
         is_valid = data.schema_version == version
-        assert is_valid
         if not is_valid:
             raise Exception(f"{data.schema_version} != {version}")
         return is_valid

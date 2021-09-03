@@ -12,5 +12,7 @@ jsonref==0.2
     # via -r requirements.in
 pydantic==1.8.2
     # via -r requirements.in
+semver==2.13.0
+    # via -r requirements.in
 typing-extensions==3.10.0.2
     # via pydantic

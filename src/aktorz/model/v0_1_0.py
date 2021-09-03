@@ -1,39 +1,83 @@
 
+from .base_model import BaseModel
+
 from pydantic import (
-    Extra
+    Extra,
+    validator
 )
-from pydantic import BaseModel as PydanticBaseModel
+
+from semver import VersionInfo
 
 from typing import (
-    Any,
+    # Any,
     Dict,
     List,
+    NewType,
     Optional,
+    Tuple,
     Union
 )
 
-
-class BaseModel(PydanticBaseModel):
-
-    class Config:
-        extra: str = Extra.forbid
+# TODO: Make this `semver` and move to __init__
+SchemaVersion = NewType('SchemaVersion', str)
+# from . import SchemaVersion
 
 
-class Actor(BaseModel):
+MovieTitle = NewType('MovieTitle', str)
+MovieId = NewType('MovieId', str)
+Year = NewType('Year', int)
+PersonId = NewType('PersonId', str)
+ActorId = NewType('ActorId', PersonId)
 
+
+class Person(BaseModel):
     first_name: str
     last_name: str
-    movies: Union[Dict[str, Any], List[Any]]
 
-    birth_year: Optional[int]
-    filmography: Optional[List[Any]]
+
+class CastMember(BaseModel):
+
+    # 0.2.0 -> actor_id
+    actor: ActorId
+
+    # 0.2.0 -> character
+    name: str
+
+
+class Movie(BaseModel):
+    title: MovieTitle
+
+    cast: Optional[Dict[ActorId, CastMember]]
+
+    budget: Optional[int]
+    run_time_minutes: Optional[int]
+    year: Optional[Year]
+
+
+class Spouse(Person):
+    children: List[Person]
+
+
+class Actor(Person):
+
+    # 0.2.0 -> Dict[str, Movie]
+    movies: Union[
+        Dict[MovieId, Movie],
+        List[Movie]
+    ]
+
+    # 0.2.0 -> Merge this into movies
+    filmography: Optional[List[Tuple[MovieTitle, Year]]]
+
+    birth_year: Optional[Year]
     is_funny: Optional[bool]
-    spouses: Optional[Dict[str, Any]]
 
-    hobbies: Optional[Dict[str, Any]]
+    spouses: Optional[Dict[PersonId, Spouse]]
+
+    hobbies: Optional[Dict[str, str]]
 
 
 class Model(BaseModel):
 
-    schema_version: str
-    actors: Dict[str, Actor]
+    schema_version: SchemaVersion
+    actors: Dict[ActorId, Actor]

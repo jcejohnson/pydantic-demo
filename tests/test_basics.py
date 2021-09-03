@@ -58,7 +58,7 @@ class TestSimple:
     def test_loads(self, actor_data_json: str):
         '''Test loading of v0.1.0 data from a json string into the model.'''
 
-        data = Loader(version='v0.1.0').loads(json_string=actor_data_json)
+        data = Loader(version='v0.1.0').loads(json_string=actor_data_json, verify_version=False)
 
         assert data.schema_version == 'v0.1.0'
         assert len(data.actors) == 2
