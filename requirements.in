@@ -3,6 +3,7 @@
 # to avoid surprises.
 #
 
+bump2version~=1.0
 colorama~=0.4
 exitstatus~=2.1
 jsonref~=0.2

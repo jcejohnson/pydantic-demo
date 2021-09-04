@@ -18,6 +18,8 @@ from typing import (
     Union
 )
 
+VERSION = '0.1.0'
+
 # 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType('SchemaVersion', str)
 

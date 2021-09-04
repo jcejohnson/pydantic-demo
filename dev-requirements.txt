@@ -14,8 +14,6 @@ backports.entry-points-selectable==1.1.0
     # via virtualenv
 black==21.8b0
     # via -r dev-requirements.in
-bump2version==1.0.1
-    # via -r dev-requirements.in
 certifi==2021.5.30
     # via requests
 charset-normalizer==2.0.4
