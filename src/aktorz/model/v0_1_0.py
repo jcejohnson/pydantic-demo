@@ -1,34 +1,21 @@
+from typing import Dict, List, NewType, Optional, Tuple, Union  # Any,
+
+from pydantic import Extra, validator
+from semver import VersionInfo
 
 from .base_model import BaseModel
 
-from pydantic import (
-    Extra,
-    validator
-)
-
-from semver import VersionInfo
-
-from typing import (
-    # Any,
-    Dict,
-    List,
-    NewType,
-    Optional,
-    Tuple,
-    Union
-)
-
-VERSION = '0.1.0'
+VERSION = "0.1.0"
 
 # 0.2.0 -> from . import SchemaVersion
-SchemaVersion = NewType('SchemaVersion', str)
+SchemaVersion = NewType("SchemaVersion", str)
 
 
-MovieTitle = NewType('MovieTitle', str)
-MovieId = NewType('MovieId', str)
-Year = NewType('Year', int)
-PersonId = NewType('PersonId', str)
-ActorId = NewType('ActorId', PersonId)
+MovieTitle = NewType("MovieTitle", str)
+MovieId = NewType("MovieId", str)
+Year = NewType("Year", int)
+PersonId = NewType("PersonId", str)
+ActorId = NewType("ActorId", PersonId)
 
 
 class Person(BaseModel):
@@ -62,10 +49,7 @@ class Spouse(Person):
 class Actor(Person):
 
     # 0.2.0 -> Dict[str, Movie]
-    movies: Union[
-        Dict[MovieId, Movie],
-        List[Movie]
-    ]
+    movies: Union[Dict[MovieId, Movie], List[Movie]]
 
     # 0.2.0 -> Merge this into movies
     filmography: Optional[List[Tuple[MovieTitle, Year]]]

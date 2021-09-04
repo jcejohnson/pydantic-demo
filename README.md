@@ -15,7 +15,13 @@ The point of this repository (beyond the obvious goal of learning pydantic) is t
 
 ## Supporting New Schema Versions
 
-1. bumpversion
+1. bumpversion --new-version x.y.z-rc1 patch
+2. cp src/aktorz/model/v{current_version}.py src/aktorz/model/v{new_version}.py
+3. cp src/tests/test_{current_version}.py src/tests/test_{new_version}.py
+4. git add/commit/push
+5. Update the new model and its test to implement whatever is required for the new version.
+6. bumpversion --new-version x.y.z patch
+7. git add/commit/push
 
 ## Quick Start
 

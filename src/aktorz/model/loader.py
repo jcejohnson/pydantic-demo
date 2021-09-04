@@ -1,15 +1,9 @@
-
 import importlib
-
 from dataclasses import dataclass
-from typing import Union
 from pathlib import PosixPath
+from typing import Union
 
-from pydantic import (
-    FilePath,
-    #
-    validate_arguments
-)
+from pydantic import FilePath, validate_arguments
 
 
 @dataclass
@@ -22,7 +16,7 @@ class Loader:
         if not version:
             version = self.version
 
-        module = importlib.import_module('.' + str(version).replace('.', '_'), package=__package__)
+        module = importlib.import_module("." + str(version).replace(".", "_"), package=__package__)
 
         return module.Model
 
