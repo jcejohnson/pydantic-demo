@@ -18,9 +18,8 @@ from typing import (
     Union
 )
 
-# TODO: Make this `semver` and move to __init__
+# 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType('SchemaVersion', str)
-# from . import SchemaVersion
 
 
 MovieTitle = NewType('MovieTitle', str)

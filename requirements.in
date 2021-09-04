@@ -1,5 +1,13 @@
+#
+# In general I like to partially lock dependency versions
+# to avoid surprises.
+#
+
 colorama~=0.4
 exitstatus~=2.1
-jsonref
-pydantic
-semver
+jsonref~=0.2
+pydantic~=1.8
+
+# Force semver2 until semver3 is finalized
+# See https://python-semver.readthedocs.io/en/latest/index.html
+semver>=2,<3
