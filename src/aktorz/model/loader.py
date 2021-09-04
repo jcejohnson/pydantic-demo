@@ -5,6 +5,8 @@ from typing import Union
 
 from pydantic import FilePath, validate_arguments
 
+from .schema_version import SchemaVersion
+
 
 @dataclass
 class Loader:
