@@ -1,1 +1,5 @@
-from . import CURRENT_VERSION as VERSION
+from . import VERSION as VERSION
+
+
+def main(*args):
+    print(VERSION)

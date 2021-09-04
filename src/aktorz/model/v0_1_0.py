@@ -1,14 +1,10 @@
-from typing import Dict, List, NewType, Optional, Tuple, Union  # Any,
-
-from pydantic import Extra, validator
-from semver import VersionInfo
+from typing import Dict, List, NewType, Optional, Tuple, Union
 
 from .base_model import BaseModel
 
-VERSION = "0.1.0"
-
 # 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)
+VERSION = SchemaVersion("v0.1.0")
 
 
 MovieTitle = NewType("MovieTitle", str)

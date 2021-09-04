@@ -1,20 +1,20 @@
 import copy
 import json
-import os
 
-import jsonref  # type: ignore
+# import jsonref  # type: ignore
 import pytest
 from pydantic import FilePath
 
 from aktorz.model import Loader
+from aktorz.model.v0_1_0 import VERSION
 
 
-class TestSchemaVersion_0_1_0:
+class TestSchemaVersionMajor0Minor1Patch0:
     """Schema Version 0.1.0 tests."""
 
     # Our raw test data.
-    _actor_data_dict: dict = None
-    _actor_data_json: json = None
+    _actor_data_dict: dict = {}
+    _actor_data_json: str = ""
 
     # Fixtures to provide copies of the raw data to each test function.
     @pytest.fixture
@@ -25,18 +25,18 @@ class TestSchemaVersion_0_1_0:
     @pytest.fixture
     def actor_data_dict(self, actor_data_path):
         """Returns the raw actor data as a dict."""
-        if not TestSchemaVersion_0_1_0._actor_data_dict:
-            TestSchemaVersion_0_1_0._actor_data_dict = json.loads(actor_data_path.read_text())
-        return TestSchemaVersion_0_1_0._actor_data_dict
+        if not TestSchemaVersionMajor0Minor1Patch0._actor_data_dict:
+            TestSchemaVersionMajor0Minor1Patch0._actor_data_dict = json.loads(actor_data_path.read_text())
+        return TestSchemaVersionMajor0Minor1Patch0._actor_data_dict
 
     @pytest.fixture
     def actor_data_json(self, actor_data_path):
         """Returns the raw (directly from the file) actor data as a json string.
         For assertions you should use test_data_json instead.
         """
-        if not TestSchemaVersion_0_1_0._actor_data_json:
-            TestSchemaVersion_0_1_0._actor_data_json = actor_data_path.read_text()
-        return TestSchemaVersion_0_1_0._actor_data_json
+        if not TestSchemaVersionMajor0Minor1Patch0._actor_data_json:
+            TestSchemaVersionMajor0Minor1Patch0._actor_data_json = actor_data_path.read_text()
+        return TestSchemaVersionMajor0Minor1Patch0._actor_data_json
 
     @pytest.fixture
     def test_data_dict(self, actor_data_dict):
@@ -50,19 +50,22 @@ class TestSchemaVersion_0_1_0:
 
     # Tests...
 
+    def test_version(self):
+        assert VERSION == "v0.1.0"
+
     def test_model(self):
         """Test loading of the v0.1.0 model"""
 
-        model = Loader(version="v0.1.0").model()
+        model = Loader(version=VERSION).model()
         assert model.__module__ == "aktorz.model.v0_1_0"
 
     def test_load_file(self, actor_data_path: FilePath):
         """Test loading of v0.1.0 data from a file into the model."""
 
-        loader = Loader(version="v0.1.0")
+        loader = Loader(version=VERSION)
         data = loader.load(input=actor_data_path)
 
-        assert data.schema_version == "v0.1.0"
+        assert data.schema_version == VERSION
 
         assert len(data.actors) == 2
         assert data.actors["charlie_chaplin"].birth_year == 1889
@@ -70,10 +73,10 @@ class TestSchemaVersion_0_1_0:
     def test_load_dict(self, actor_data_dict: dict):
         """Test loading of v0.1.0 data from a json string into the model."""
 
-        loader = Loader(version="v0.1.0")
-        data = loader.load(input=actor_data_dict, verify_version=True)
+        loader = Loader(version=VERSION)
+        data = loader.load(input=actor_data_dict, verify_version=False)
 
-        assert data.schema_version == "v0.1.0"
+        assert data.schema_version == VERSION
 
         assert len(data.actors) == 2
         assert data.actors["charlie_chaplin"].birth_year == 1889
@@ -81,10 +84,10 @@ class TestSchemaVersion_0_1_0:
     def test_load_string(self, actor_data_json: str, test_data_dict: str):
         """Test loading of v0.1.0 data from a json string into the model."""
 
-        loader = Loader(version="v0.1.0")
-        data = loader.load(input=actor_data_json, verify_version=True)
+        loader = Loader(version=VERSION)
+        data = loader.load(input=actor_data_json, verify_version=False)
 
-        assert data.schema_version == "v0.1.0"
+        assert data.schema_version == VERSION
 
         assert len(data.actors) == 2
         assert data.actors["charlie_chaplin"].birth_year == 1889
@@ -92,11 +95,11 @@ class TestSchemaVersion_0_1_0:
     def test_load_equivalence(self, actor_data_path: FilePath, actor_data_dict: dict, actor_data_json: str):
         """Verify that loading from file, dict and string give equal results."""
 
-        loader = Loader(version="v0.1.0")
+        loader = Loader(version=VERSION)
 
-        d1 = loader.load(input=actor_data_path, verify_version=True)
-        d2 = loader.load(input=actor_data_dict, verify_version=True)
-        d3 = loader.load(input=actor_data_json, verify_version=True)
+        d1 = loader.load(input=actor_data_path, verify_version=False)
+        d2 = loader.load(input=actor_data_dict, verify_version=False)
+        d3 = loader.load(input=actor_data_json, verify_version=False)
 
         assert d1 == d2
         assert d1 == d3
@@ -105,8 +108,8 @@ class TestSchemaVersion_0_1_0:
     def test_load_dict_equivalence(self, actor_data_json: str, test_data_dict: str):
         """Load the data into the model and compare against the raw file data."""
 
-        loader = Loader(version="v0.1.0")
-        data = loader.load(input=actor_data_json, verify_version=True)
+        loader = Loader(version=VERSION)
+        data = loader.load(input=actor_data_json, verify_version=False)
 
         # The model will insert default values for missing elements.
         # test_data_dict is raw data from the input file and will not
@@ -118,32 +121,37 @@ class TestSchemaVersion_0_1_0:
 
         # Our model specifies that filmography is a list of tuples
         # but json.load() will give us a list of lists. Convert.
-        assert type(data.dict()["actors"]["charlie_chaplin"]["filmography"][0]) == tuple
-        assert type(target["actors"]["charlie_chaplin"]["filmography"][0]) == list
 
-        for i, value in enumerate(target["actors"]["charlie_chaplin"]["filmography"]):
-            target["actors"]["charlie_chaplin"]["filmography"][i] = tuple(value)
+        # mypy complains about these so we silence it with the `type: ignore` comment
+        #   error: Invalid index type "str" for "str"; expected type "Union[int, slice]"
+        #   error: Unsupported target for indexed assignment ("str")
 
-        target["actors"]["charlie_chaplin"]["hobbies"] = None
-        target["actors"]["charlie_chaplin"]["movies"]["modern_times"]["cast"] = None
+        assert type(data.dict()["actors"]["charlie_chaplin"]["filmography"][0]) == tuple  # type: ignore
+        assert type(target["actors"]["charlie_chaplin"]["filmography"][0]) == list  # type: ignore
 
-        target["actors"]["dwayne_johnson"]["birth_year"] = None
-        target["actors"]["dwayne_johnson"]["filmography"] = None
-        target["actors"]["dwayne_johnson"]["is_funny"] = None
-        target["actors"]["dwayne_johnson"]["movies"][0]["budget"] = None
-        target["actors"]["dwayne_johnson"]["movies"][0]["run_time_minutes"] = None
-        target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None
-        target["actors"]["dwayne_johnson"]["spouses"] = None
+        for i, value in enumerate(target["actors"]["charlie_chaplin"]["filmography"]):  # type: ignore
+            target["actors"]["charlie_chaplin"]["filmography"][i] = tuple(value)  # type: ignore
+
+        target["actors"]["charlie_chaplin"]["hobbies"] = None  # type: ignore
+        target["actors"]["charlie_chaplin"]["movies"]["modern_times"]["cast"] = None  # type: ignore
+
+        target["actors"]["dwayne_johnson"]["birth_year"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["filmography"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["is_funny"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["budget"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["run_time_minutes"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["spouses"] = None  # type: ignore
 
         assert data.dict() == target
 
     def test_mappable(self, actor_data_dict: str):
         """Test the ability to treat model objects as maps."""
 
-        loader = Loader(version="v0.1.0")
-        data = loader.load(input=actor_data_dict, verify_version=True)
+        loader = Loader(version=VERSION)
+        data = loader.load(input=actor_data_dict, verify_version=False)
 
-        assert data.schema_version == "v0.1.0"
+        assert data.schema_version == VERSION
 
         assert len(data["actors"]) == 2
         assert type(data["actors"]) == dict
@@ -158,7 +166,7 @@ class TestSchemaVersion_0_1_0:
 
     def _recurse(self, d):
 
-        if (d == None) or isinstance(d, int) or isinstance(d, str):
+        if (d is None) or isinstance(d, int) or isinstance(d, str):
             return d
 
         if isinstance(d, list) or isinstance(d, tuple):
