@@ -9,6 +9,9 @@ class BaseModel(PydanticBaseModel):
     def __getitem__(self, key):
         return getattr(self, key)
 
+    def __setitem__(self, key, value):
+        return setattr(self, key, value)
+
     def items(self):
         return self.dict().items()
 
@@ -17,3 +20,8 @@ class BaseModel(PydanticBaseModel):
 
     def values(self):
         return self.dict().values()
+
+    def pop(self, key):
+        value = self[key]
+        delattr(self, key)
+        return value

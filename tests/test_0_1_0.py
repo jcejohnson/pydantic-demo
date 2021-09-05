@@ -101,6 +101,21 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
                 "type": "type_error.dict",
             },
             {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "dominic_toretto", "name"),
+                "msg": "field required",
+                "type": "value_error.missing",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "dominic_toretto", "first_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "dominic_toretto", "last_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
                 "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "first_name"),
                 "msg": "extra fields not permitted",
                 "type": "value_error.extra",
@@ -117,11 +132,19 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
             pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
 
     def test_mappable(self, actor_data_json: str, test_data_dict: str):
-        """Test the ability to treat model objects as maps."""
+        """
+        Test the ability to treat model objects as maps.
+        - Reference
+        - Update
+        - Add (forbidden)
+        - Remove
+        """
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
         data = loader.load(input=actor_data_json)
+
+        # Reference
 
         # The model will insert default values for missing elements.
         # test_data_dict is raw data from the input file and will not
@@ -155,10 +178,39 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
         target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None  # type: ignore
         target["actors"]["dwayne_johnson"]["spouses"] = None  # type: ignore
 
+        # Now, convert the model to a dict and compare it with our direct-from-json dict
         assert data.dict() == target
 
+        # Update
+
+        # We can also manipulate the properties as though they were dicts.
+        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"]['name'] = 'Toretto'
+        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
+
+        ##### Add (forbidden)
+
+        # But we cannot add arbitrary elements as we could with a dict.
+        with pytest.raises(ValueError) as exc_info:
+            data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"]['nickname'] = 'Toretto'
+        assert str(exc_info.value) == '"CastMember" object has no field "nickname"'
+
+        # Remove
+
+        assert data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].pop('name') == 'Toretto'
+        # The mia_toretto character still has a name property
+        assert data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
+        # But the dominic_toretto's name has been removed
+        assert 'name' not in data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
+        with pytest.raises(AttributeError) as exc_info:
+            assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
+        assert str(exc_info.value) == "'CastMember' object has no attribute 'name'"
+        # Neither of these wil throw an exception even though the dominic_toretto CastMember
+        # no longer has its required `name` property.
+        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].dict()
+        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].json()
+
     def test_mappable_recursively(self, actor_data_dict: str):
-        """Recursively test the ability to treat model objects as maps."""
+        """Recursively test the ability to access model objects' properties as maps."""
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
