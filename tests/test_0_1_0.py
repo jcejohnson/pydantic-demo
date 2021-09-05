@@ -1,115 +1,127 @@
 import copy
-import json
 
-# import jsonref  # type: ignore
 import pytest
 from pydantic import FilePath
 
 from aktorz.model import Loader
 from aktorz.model.v0_1_0 import VERSION
 
+from .base_test import BaseTest
 
-class TestSchemaVersionMajor0Minor1Patch0:
+
+class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
     """Schema Version 0.1.0 tests."""
 
-    # Our raw test data.
-    _actor_data_dict: dict = {}
-    _actor_data_json: str = ""
+    # Class constants required by BaseTest
+
+    MODEL_MODULE = "aktorz.model.v0_1_0"
+    TEST_FILE = "actor-data-0.1.0.json"
+    VERSION = "v0.1.0"
 
     # Fixtures to provide copies of the raw data to each test function.
-    @pytest.fixture
-    def actor_data_path(self, resource_path_root) -> FilePath:
-        """Returns a fully qualified PosixPath to the actor-data.json file"""
-        return resource_path_root / "actor-data-0.1.0.json"
-
-    @pytest.fixture
-    def actor_data_dict(self, actor_data_path):
-        """Returns the raw actor data as a dict."""
-        if not TestSchemaVersionMajor0Minor1Patch0._actor_data_dict:
-            TestSchemaVersionMajor0Minor1Patch0._actor_data_dict = json.loads(actor_data_path.read_text())
-        return TestSchemaVersionMajor0Minor1Patch0._actor_data_dict
-
-    @pytest.fixture
-    def actor_data_json(self, actor_data_path):
-        """Returns the raw (directly from the file) actor data as a json string.
-        For assertions you should use test_data_json instead.
-        """
-        if not TestSchemaVersionMajor0Minor1Patch0._actor_data_json:
-            TestSchemaVersionMajor0Minor1Patch0._actor_data_json = actor_data_path.read_text()
-        return TestSchemaVersionMajor0Minor1Patch0._actor_data_json
-
-    @pytest.fixture
-    def test_data_dict(self, actor_data_dict):
-        """Returns a normalized version of actor_data_dict."""
-        return actor_data_dict
-
-    @pytest.fixture
-    def test_data_json(self, actor_data_dict):
-        """Returns a normalized version of actor_data_json."""
-        return json.dumps(actor_data_dict)
 
     # Tests...
 
-    def test_version(self):
-        assert VERSION == "v0.1.0"
+    # Every concrete test class needs this test to ensure that we don't
+    # have typos in our constants.
+    def test_constants(self, model_module, schema_version, test_file_basename):
+        """
+        Verify that our class constants are correctly provided by
+        BaseTest's fixtures.
+        """
+        assert model_module == self.__class__.MODEL_MODULE
+        assert schema_version == self.__class__.VERSION
+        assert test_file_basename == self.__class__.TEST_FILE
 
-    def test_model(self):
-        """Test loading of the v0.1.0 model"""
+        assert VERSION == self.__class__.VERSION
 
-        model = Loader(version=VERSION).model()
-        assert model.__module__ == "aktorz.model.v0_1_0"
+    def test_basic_data(self, actor_data_json: str, test_data_dict: str):
+        """
+        Test loading of v0.1.0 data from a json string into the model.
+        Some concrete test classes will (and some will not) have have a similar test.
+        """
 
-    def test_load_file(self, actor_data_path: FilePath):
-        """Test loading of v0.1.0 data from a file into the model."""
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        data = loader.load(input=actor_data_json)
 
-        loader = Loader(version=VERSION)
-        data = loader.load(input=actor_data_path)
-
-        assert data.schema_version == VERSION
-
-        assert len(data.actors) == 2
-        assert data.actors["charlie_chaplin"].birth_year == 1889
-
-    def test_load_dict(self, actor_data_dict: dict):
-        """Test loading of v0.1.0 data from a json string into the model."""
-
-        loader = Loader(version=VERSION)
-        data = loader.load(input=actor_data_dict, verify_version=False)
-
-        assert data.schema_version == VERSION
+        assert data.schema_version == schema_version
 
         assert len(data.actors) == 2
         assert data.actors["charlie_chaplin"].birth_year == 1889
 
-    def test_load_string(self, actor_data_json: str, test_data_dict: str):
-        """Test loading of v0.1.0 data from a json string into the model."""
+    def test_version_mismatch(self, actor_data_path: FilePath):
+        """
+        Test failure when doc schema version mismatches.
 
-        loader = Loader(version=VERSION)
-        data = loader.load(input=actor_data_json, verify_version=False)
+        Note that, unlike test_load_0_1_1(), we are not violating
+        any pydantic constraints before load() has a chance to
+        perform its own validation.
 
-        assert data.schema_version == VERSION
+        Also, we do not explicitly pass the validate_version=True
+        parameter to load() because we want the test to fail if
+        load()'s default behavior changes (indicating a breaking
+        change).
+        """
 
-        assert len(data.actors) == 2
-        assert data.actors["charlie_chaplin"].birth_year == 1889
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
 
-    def test_load_equivalence(self, actor_data_path: FilePath, actor_data_dict: dict, actor_data_json: str):
-        """Verify that loading from file, dict and string give equal results."""
+        with pytest.raises(ValueError) as exc_info:
+            loader.load(input='{"schema_version":"v0.9.0", "actors":{}}')
 
-        loader = Loader(version=VERSION)
+        assert str(exc_info.value) == "v0.9.0 != 0.1.0 and v0.9.0 != v0.1.0"
 
-        d1 = loader.load(input=actor_data_path, verify_version=False)
-        d2 = loader.load(input=actor_data_dict, verify_version=False)
-        d3 = loader.load(input=actor_data_json, verify_version=False)
+    def test_load_0_1_1(self, resource_path_root):
+        """
+        Verify that our v0.1.0 model will fail when trying to load a v0.1.1 document.
 
-        assert d1 == d2
-        assert d1 == d3
-        assert d2 == d3
+        We should get a pydantic exception because the v0.1.1 document has
+        extra fields (first_name, last_name) for the `Mia Toretto` character.
 
-    def test_load_dict_equivalence(self, actor_data_json: str, test_data_dict: str):
-        """Load the data into the model and compare against the raw file data."""
+        Note that this exception comes _before_ load(verify_version=True)
+        comes into play.
+        """
 
-        loader = Loader(version=VERSION)
-        data = loader.load(input=actor_data_json, verify_version=False)
+        # Fetch our v0.1.0 loader
+        loader = Loader(version=self.__class__.VERSION)
+
+        from .test_0_1_1 import TestSchemaVersionMajor0Minor1Patch1 as v0_1_1  # noqa:  N814
+
+        with pytest.raises(ValueError) as exc_info:
+            # Construct the v0.1.0 test file path
+            input = resource_path_root / v0_1_1.TEST_FILE
+            # Load it
+            loader.load(input=input)
+
+        expected_errors = [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "first_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "last_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+        ]
+
+        actual_errors = exc_info.value.errors()
+        if expected_errors != actual_errors:
+            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+
+    def test_mappable(self, actor_data_json: str, test_data_dict: str):
+        """Test the ability to treat model objects as maps."""
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        data = loader.load(input=actor_data_json)
 
         # The model will insert default values for missing elements.
         # test_data_dict is raw data from the input file and will not
@@ -145,13 +157,14 @@ class TestSchemaVersionMajor0Minor1Patch0:
 
         assert data.dict() == target
 
-    def test_mappable(self, actor_data_dict: str):
-        """Test the ability to treat model objects as maps."""
+    def test_mappable_recursively(self, actor_data_dict: str):
+        """Recursively test the ability to treat model objects as maps."""
 
-        loader = Loader(version=VERSION)
-        data = loader.load(input=actor_data_dict, verify_version=False)
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        data = loader.load(input=actor_data_dict)
 
-        assert data.schema_version == VERSION
+        assert data.schema_version == schema_version
 
         assert len(data["actors"]) == 2
         assert type(data["actors"]) == dict
@@ -163,6 +176,8 @@ class TestSchemaVersionMajor0Minor1Patch0:
 
         # Brute-force recurse the model using Mappable syntax.
         self._recurse(data)
+
+    # Helpers
 
     def _recurse(self, d):
 

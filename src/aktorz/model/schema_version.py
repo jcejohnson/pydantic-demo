@@ -35,7 +35,7 @@ class SchemaVersion(Version):
         if not isinstance(version, str):
             raise TypeError(f"cannot parse {version} of type {type(version)}")
 
-        version_parts = cls._PARSE_ALT_REGEX.match(version).groupdict()
+        version_parts = cls._PARSE_ALT_REGEX.match(version).groupdict()  # type: ignore
 
         version = version_parts["version"] or version
         version_prefix = version_parts["prefix"] or version_prefix

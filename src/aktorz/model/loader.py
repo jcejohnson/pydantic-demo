@@ -5,10 +5,7 @@ from typing import Optional, Union
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
-# In v0.1.x SchemaVersion was a string.
-# Loader needs to support this type until v0.1.x is no longer suported
 from .schema_version import SchemaVersion
-from .v0_1_0 import SchemaVersion as SchemaVersionV01x
 
 
 @dataclass
@@ -19,7 +16,9 @@ class Loader:
     version_prefix: Optional[str] = "v"
 
     # The version must be semver compliant. (See validate_version().)
-    version: Optional[SchemaVersion] = None
+    # We prefer a SchemaVersion instance but can tolerate anything
+    # SchemaVersion.parse_alt() can handle.
+    version: Optional[Union[SchemaVersion, str]] = None
 
     @validator("version", pre=True)
     @classmethod
@@ -42,7 +41,22 @@ class Loader:
         return getattr(module, "Model")
 
     @validate_arguments
-    def load(self, *, input: Union[str, dict, FilePath], verify_version: Optional[bool] = True):
+    def load(
+        self,
+        *,
+        input: Union[str, dict, FilePath],
+        verify_version: Optional[Union[bool, str]] = True,
+        update_version: Optional[bool] = True,
+    ):
+        """
+        TODO: Document properly.
+
+        if verify_version is True
+            raise ValueError if data.schema_version != self.version
+
+        If verify_version is a str and update_version is True
+            data.schema_version = self.version
+        """
 
         model = self.model()
 
@@ -56,11 +70,11 @@ class Loader:
             raise TypeError(f"Unexpected input type {input.__class__}")
 
         if verify_version:
-            self._verify_version(data)
+            self._verify_version(data, verify_version, update_version)
 
         return data
 
-    def _verify_version(self, data):
+    def _verify_version(self, data, verify_version, update_version):
 
         # TODO: Do a real semver compatibility check.
 
@@ -73,8 +87,16 @@ class Loader:
         if m1() or m2():
             return True
 
-        raise Exception(
-            f"{data.schema_version} != {self.version}"
-            " and "
-            f"{data.schema_version} != {self.version_prefix}{self.version}"
-        )
+        if isinstance(verify_version, bool):
+            raise ValueError(
+                f"{data.schema_version} != {self.version}"
+                " and "
+                f"{data.schema_version} != {self.version_prefix}{self.version}"
+            )
+
+        if str(data.schema_version) == verify_version:
+            if update_version:
+                data.schema_version = self.version
+            return True
+
+        raise ValueError(f"{data.schema_version} != {verify_version}")

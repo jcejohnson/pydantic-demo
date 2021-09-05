@@ -1,0 +1,31 @@
+{
+  "schema_version": "v0.1.1",
+
+  "actors": {
+    "dwayne_johnson": {
+      "first_name": "Dwayne",
+      "hobbies": {},
+      "last_name": "Johnson",
+      "movies": [
+        {
+          "cast": {
+            "brian_oconner": {
+              "actor": "paul_walker",
+              "name": "Brian O'Conner"
+            },
+            "dominic_toretto": {
+              "actor": "vin_diesel",
+              "name": "Dominic Toretto"
+            },
+            "mia_toretto": {
+              "actor": "jordana_brewster",
+              "first_name": "Mia",
+              "last_name": "Toretto"
+            }
+          },
+          "title": "Fast Five"
+        }
+      ]
+    }
+  }
+}
