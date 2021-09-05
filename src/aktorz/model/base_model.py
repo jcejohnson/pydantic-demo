@@ -15,11 +15,13 @@ class BaseModel(PydanticBaseModel):
     def items(self):
         return self.dict().items()
 
-    def keys(self):
-        return self.dict().keys()
+    # Not yet required.
+    # def keys(self):
+    #     return self.dict().keys()
 
-    def values(self):
-        return self.dict().values()
+    # Not yet required.
+    # def values(self):
+    #     return self.dict().values()
 
     def pop(self, key):
         value = self[key]
