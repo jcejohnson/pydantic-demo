@@ -45,12 +45,13 @@ class CastMember(BaseModel):
     # Made optional in 0.1.1 (See validate_name.)
     name: Optional[str]
 
-    @validator("name")
+    # `always` is required so that validate_name() is called when name is not provided.
+    @validator("name", always=True)
     @classmethod
     def validate_name(cls, name, values):
         """
         Added in 0.1.1
-        To be removed in 0.2.0 when *name attributes are replaced by `character`.
+        To be removed in 0.2.0 when our *name properties are replaced by `character`.
         full_name = [first_name, last_name].join(' ')
         raise VauleError if name is truthy but not equal to full_name
         """
@@ -59,7 +60,9 @@ class CastMember(BaseModel):
             if full_name and name != full_name:
                 raise ValueError(f"name [{name}] != full_name [{full_name}]")
             return name
-        return full_name
+        if full_name:
+            return full_name
+        raise ValueError("Either `name` or `first/last_name` must be provided.")
 
 
 class Movie(BaseModel):

@@ -27,10 +27,10 @@ class Loader:
         If the version is not a SchemaVersion parse it to extract an
         optional prefix and the semver-compliant version.
         """
-        if not isinstance(version, SchemaVersion):
-            values.update(SchemaVersion.parse_alt(version=version, **values))
-            return values["version"]
-        return version
+        if isinstance(version, SchemaVersion):
+            return version
+        values.update(SchemaVersion.parse_alt(version=version, **values))
+        return values["version"]
 
     @validate_arguments
     def model(self):

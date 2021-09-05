@@ -184,30 +184,30 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
         # Update
 
         # We can also manipulate the properties as though they were dicts.
-        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"]['name'] = 'Toretto'
+        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["name"] = "Toretto"
         assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
 
-        ##### Add (forbidden)
+        # #### Add (forbidden)
 
         # But we cannot add arbitrary elements as we could with a dict.
         with pytest.raises(ValueError) as exc_info:
-            data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"]['nickname'] = 'Toretto'
+            data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["nickname"] = "Toretto"
         assert str(exc_info.value) == '"CastMember" object has no field "nickname"'
 
         # Remove
 
-        assert data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].pop('name') == 'Toretto'
+        assert data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].pop("name") == "Toretto"
         # The mia_toretto character still has a name property
         assert data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
         # But the dominic_toretto's name has been removed
-        assert 'name' not in data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
-        with pytest.raises(AttributeError) as exc_info:
+        assert "name" not in data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
+        with pytest.raises(AttributeError) as exc_info:  # type: ignore
             assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
         assert str(exc_info.value) == "'CastMember' object has no attribute 'name'"
         # Neither of these wil throw an exception even though the dominic_toretto CastMember
         # no longer has its required `name` property.
-        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].dict()
-        data['actors']["dwayne_johnson"]['movies'][0]['cast']["dominic_toretto"].json()
+        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].dict()
+        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].json()
 
     def test_mappable_recursively(self, actor_data_dict: str):
         """Recursively test the ability to access model objects' properties as maps."""

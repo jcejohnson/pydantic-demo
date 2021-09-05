@@ -65,7 +65,8 @@
             },
             "dominic_toretto": {
               "actor": "vin_diesel",
-              "name": "Dominic Toretto"
+              "first_name": "Dominic",
+              "last_name": "Toretto"
             },
             "mia_toretto": {
               "actor": "jordana_brewster",

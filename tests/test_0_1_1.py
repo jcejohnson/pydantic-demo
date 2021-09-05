@@ -36,22 +36,41 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         assert VERSION == self.__class__.VERSION
 
     def test_character_full_name(self, actor_data_path: FilePath):
-        """Verify that attempting to parse a badly formed character fails as expected."""
+        """Verify that cast character name is handled properly"""
 
         loader = Loader(version=VERSION)
 
+        data = loader.load(input=actor_data_path)
+        # The Data:
+        #    "dominic_toretto": {
+        #      "actor": "vin_diesel",
+        #      "first_name": "Dominic",
+        #      "last_name": "Toretto"
+        #    }
+        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Dominic Toretto"
+        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]["name"] == "Dominic Toretto"
+        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].dict() == {
+            "actor": "vin_diesel",
+            "first_name": "Dominic",
+            "last_name": "Toretto",
+            "name": "Dominic Toretto",
+        }
+
+        # ####
+
+        test_data = data.copy(deep=True)
+        test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name = None
+
+        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
+        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].first_name == "Mia"
+        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name is None
+
         with pytest.raises(ValidationError) as exc_info:
-            # Document A:
-            #     "mia_toretto": {
-            #       "actor": "jordana_brewster",
-            #       "name": "Mia Toretto",
-            #       "first_name": "Mia"
-            #     }
-            loader.load(input=PosixPath(str(actor_data_path).replace(".json", ".a.json")))
+            loader.load(input=test_data.json())
 
         expected_errors = [
             {
-                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "loc": ("actors", "dwayne_johnson", "movies"),
                 "msg": "value is not a valid dict",
                 "type": "type_error.dict",
             },
@@ -64,6 +83,39 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         actual_errors = exc_info.value.errors()
         if expected_errors != actual_errors:
             pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+
+        # ####
+
+        test_data = data.copy(deep=True)
+        test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"] = {
+            "actor": "jordana_brewster",
+            "name": "Mia Toretto",
+            "first_name": "Mia",
+        }
+        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["name"] == "Mia Toretto"
+        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["first_name"] == "Mia"
+        assert "last_name" not in test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]
+
+        with pytest.raises(ValidationError) as exc_info:
+            loader.load(input=test_data.json())
+
+        expected_errors = [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
+                "msg": "name [Mia Toretto] != full_name [Mia]",
+                "type": "value_error",
+            },
+        ]
+        actual_errors = exc_info.value.errors()
+        if expected_errors != actual_errors:
+            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+
+        # ####
 
         with pytest.raises(ValidationError) as exc_info:
             # Document B:
@@ -86,6 +138,32 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
                 "type": "value_error",
             },
         ]
+        actual_errors = exc_info.value.errors()
+        if expected_errors != actual_errors:
+            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+
+        # ####
+
+        with pytest.raises(ValidationError) as exc_info:
+            # Document C:
+            #     "brian_oconner": {
+            #       "actor": "paul_walker"
+            #     }
+            loader.load(input=PosixPath(str(actor_data_path).replace(".json", ".c.json")))
+
+        expected_errors = [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "name"),
+                "msg": "Either `name` or `first/last_name` must be provided.",
+                "type": "value_error",
+            },
+        ]
+
         actual_errors = exc_info.value.errors()
         if expected_errors != actual_errors:
             pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
