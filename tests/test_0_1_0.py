@@ -43,12 +43,12 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
-        data = loader.load(input=actor_data_json)
+        model = loader.load(input=actor_data_json)
 
-        assert data.schema_version == schema_version
+        assert model.schema_version == schema_version
 
-        assert len(data.actors) == 2
-        assert data.actors["charlie_chaplin"].birth_year == 1889
+        assert len(model.actors) == 2
+        assert model.actors["charlie_chaplin"].birth_year == 1889
 
     def test_version_mismatch(self, actor_data_path: FilePath):
         """
@@ -72,7 +72,7 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
 
         assert str(exc_info.value) == "v0.9.0 != 0.1.0 and v0.9.0 != v0.1.0"
 
-    def test_load_0_1_1(self, resource_path_root):
+    def test_load_0_1_1(self, request, resource_path_root):
         """
         Verify that our v0.1.0 model will fail when trying to load a v0.1.1 document.
 
@@ -94,7 +94,120 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
             # Load it
             loader.load(input=input)
 
-        expected_errors = [
+        self.verify_exception(request, exc_info)
+
+    def test_mappable(self, actor_data_json: str, test_data_dict: str):
+        """
+        Test the ability to treat model objects as maps.
+        - Reference
+        - Update
+        - Add (forbidden)
+        - Remove
+        """
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        model = loader.load(input=actor_data_json)
+
+        # Reference
+
+        # The model will insert default values for missing elements.
+        # test_data_dict is raw data from the input file and will not
+        # have these defaults until we add them here.
+        # Adding the default values and mutating relevant types lets
+        # us then assert that the model's dict is equivalent to the
+        # input model.
+        target = copy.deepcopy(test_data_dict)
+
+        # Our model specifies that filmography is a list of tuples
+        # but json.load() will give us a list of lists. Convert.
+
+        # mypy complains about these so we silence it with the `type: ignore` comment
+        #   error: Invalid index type "str" for "str"; expected type "Union[int, slice]"
+        #   error: Unsupported target for indexed assignment ("str")
+
+        assert type(model.dict()["actors"]["charlie_chaplin"]["filmography"][0]) == tuple  # type: ignore
+        assert type(target["actors"]["charlie_chaplin"]["filmography"][0]) == list  # type: ignore
+
+        for i, value in enumerate(target["actors"]["charlie_chaplin"]["filmography"]):  # type: ignore
+            target["actors"]["charlie_chaplin"]["filmography"][i] = tuple(value)  # type: ignore
+
+        target["actors"]["charlie_chaplin"]["hobbies"] = None  # type: ignore
+        target["actors"]["charlie_chaplin"]["movies"]["modern_times"]["cast"] = None  # type: ignore
+
+        target["actors"]["dwayne_johnson"]["birth_year"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["filmography"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["is_funny"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["budget"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["run_time_minutes"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None  # type: ignore
+        target["actors"]["dwayne_johnson"]["spouses"] = None  # type: ignore
+
+        # Now, convert the model to a dict and compare it with our direct-from-json dict
+        assert model.dict() == target
+
+        # Update
+
+        # We can also manipulate the properties as though they were dicts.
+        model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["name"] = "Toretto"
+        assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
+
+        # #### Add (forbidden)
+
+        # But we cannot add arbitrary elements as we could with a dict.
+        with pytest.raises(ValueError) as exc_info:
+            model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["nickname"] = "Toretto"
+        assert str(exc_info.value) == '"CastMember" object has no field "nickname"'
+
+        # Remove
+
+        assert model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].pop("name") == "Toretto"
+        # The mia_toretto character still has a name property
+        assert model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
+        # But the dominic_toretto's name has been removed
+        assert "name" not in model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
+        with pytest.raises(AttributeError) as exc_info:  # type: ignore
+            assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
+        assert str(exc_info.value) == "'CastMember' object has no attribute 'name'"
+        # Neither of these wil throw an exception even though the dominic_toretto CastMember
+        # no longer has its required `name` property.
+        model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].dict()
+        model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].json()
+
+    def test_mappable_recursively(self, actor_data_dict: str):
+        """Recursively test the ability to access model objects' properties as maps."""
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        model = loader.load(input=actor_data_dict)
+
+        assert model.schema_version == schema_version
+
+        assert len(model["actors"]) == 2
+        assert type(model["actors"]) == dict
+        assert type(model["actors"]["charlie_chaplin"]["movies"]) == dict
+        assert type(model["actors"]["dwayne_johnson"]["movies"]) == list
+
+        assert model["actors"]["charlie_chaplin"]["birth_year"] == 1889
+        assert model["actors"]["charlie_chaplin"]["spouses"]["lita_grey"]["first_name"] == "Lita"
+
+        # Brute-force recurse the model using Mappable syntax.
+        self._recurse(model)
+
+    # Helpers
+
+    def _recurse(self, d):
+
+        if (d is None) or isinstance(d, int) or isinstance(d, str):
+            return d
+
+        if isinstance(d, list) or isinstance(d, tuple):
+            return [self._recurse(v) for v in d]
+
+        return [self._recurse(v) for k, v in d.items()]
+
+    _expected_errors = {
+        "test_load_0_1_1": [
             {
                 "loc": ("actors", "dwayne_johnson", "movies", "cast"),
                 "msg": "value is not a valid dict",
@@ -126,117 +239,4 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
                 "type": "value_error.extra",
             },
         ]
-
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
-
-    def test_mappable(self, actor_data_json: str, test_data_dict: str):
-        """
-        Test the ability to treat model objects as maps.
-        - Reference
-        - Update
-        - Add (forbidden)
-        - Remove
-        """
-
-        schema_version = self.__class__.VERSION
-        loader = Loader(version=schema_version)
-        data = loader.load(input=actor_data_json)
-
-        # Reference
-
-        # The model will insert default values for missing elements.
-        # test_data_dict is raw data from the input file and will not
-        # have these defaults until we add them here.
-        # Adding the default values and mutating relevant types lets
-        # us then assert that the model's dict is equivalent to the
-        # input data.
-        target = copy.deepcopy(test_data_dict)
-
-        # Our model specifies that filmography is a list of tuples
-        # but json.load() will give us a list of lists. Convert.
-
-        # mypy complains about these so we silence it with the `type: ignore` comment
-        #   error: Invalid index type "str" for "str"; expected type "Union[int, slice]"
-        #   error: Unsupported target for indexed assignment ("str")
-
-        assert type(data.dict()["actors"]["charlie_chaplin"]["filmography"][0]) == tuple  # type: ignore
-        assert type(target["actors"]["charlie_chaplin"]["filmography"][0]) == list  # type: ignore
-
-        for i, value in enumerate(target["actors"]["charlie_chaplin"]["filmography"]):  # type: ignore
-            target["actors"]["charlie_chaplin"]["filmography"][i] = tuple(value)  # type: ignore
-
-        target["actors"]["charlie_chaplin"]["hobbies"] = None  # type: ignore
-        target["actors"]["charlie_chaplin"]["movies"]["modern_times"]["cast"] = None  # type: ignore
-
-        target["actors"]["dwayne_johnson"]["birth_year"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["filmography"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["is_funny"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["movies"][0]["budget"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["movies"][0]["run_time_minutes"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None  # type: ignore
-        target["actors"]["dwayne_johnson"]["spouses"] = None  # type: ignore
-
-        # Now, convert the model to a dict and compare it with our direct-from-json dict
-        assert data.dict() == target
-
-        # Update
-
-        # We can also manipulate the properties as though they were dicts.
-        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["name"] = "Toretto"
-        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
-
-        # #### Add (forbidden)
-
-        # But we cannot add arbitrary elements as we could with a dict.
-        with pytest.raises(ValueError) as exc_info:
-            data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["nickname"] = "Toretto"
-        assert str(exc_info.value) == '"CastMember" object has no field "nickname"'
-
-        # Remove
-
-        assert data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].pop("name") == "Toretto"
-        # The mia_toretto character still has a name property
-        assert data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
-        # But the dominic_toretto's name has been removed
-        assert "name" not in data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
-        with pytest.raises(AttributeError) as exc_info:  # type: ignore
-            assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
-        assert str(exc_info.value) == "'CastMember' object has no attribute 'name'"
-        # Neither of these wil throw an exception even though the dominic_toretto CastMember
-        # no longer has its required `name` property.
-        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].dict()
-        data["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].json()
-
-    def test_mappable_recursively(self, actor_data_dict: str):
-        """Recursively test the ability to access model objects' properties as maps."""
-
-        schema_version = self.__class__.VERSION
-        loader = Loader(version=schema_version)
-        data = loader.load(input=actor_data_dict)
-
-        assert data.schema_version == schema_version
-
-        assert len(data["actors"]) == 2
-        assert type(data["actors"]) == dict
-        assert type(data["actors"]["charlie_chaplin"]["movies"]) == dict
-        assert type(data["actors"]["dwayne_johnson"]["movies"]) == list
-
-        assert data["actors"]["charlie_chaplin"]["birth_year"] == 1889
-        assert data["actors"]["charlie_chaplin"]["spouses"]["lita_grey"]["first_name"] == "Lita"
-
-        # Brute-force recurse the model using Mappable syntax.
-        self._recurse(data)
-
-    # Helpers
-
-    def _recurse(self, d):
-
-        if (d is None) or isinstance(d, int) or isinstance(d, str):
-            return d
-
-        if isinstance(d, list) or isinstance(d, tuple):
-            return [self._recurse(v) for v in d]
-
-        return [self._recurse(v) for k, v in d.items()]
+    }
