@@ -109,3 +109,15 @@ class BaseTest:
     def test_data_json(self, actor_data_dict):
         """Returns a normalized version of actor_data_json."""
         return json.dumps(actor_data_dict)
+
+    # Utility methods
+
+    def expected_errors(self, request, *other):
+        key = "-".join([request.node.name, "_".join(other)]) if other else request.node.name
+        return self.__class__._expected_errors[key]
+
+    def verify_exception(self, request, exc_info, *other):
+        expected_errors = self.expected_errors(request, *other)
+        actual_errors = exc_info.value.errors()
+        if expected_errors != actual_errors:
+            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")

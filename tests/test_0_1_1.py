@@ -35,7 +35,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         assert VERSION == self.__class__.VERSION
 
-    def test_character_full_name(self, actor_data_path: FilePath):
+    def test_character_full_name(self, request, actor_data_path: FilePath):
         """Verify that cast character name is handled properly"""
 
         loader = Loader(version=VERSION)
@@ -68,21 +68,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         with pytest.raises(ValidationError) as exc_info:
             loader.load(input=test_data.json())
 
-        expected_errors = [
-            {
-                "loc": ("actors", "dwayne_johnson", "movies"),
-                "msg": "value is not a valid dict",
-                "type": "type_error.dict",
-            },
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
-                "msg": "name [Mia Toretto] != full_name [Mia]",
-                "type": "value_error",
-            },
-        ]
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+        self.verify_exception(request, exc_info, "a")
 
         # ####
 
@@ -99,21 +85,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         with pytest.raises(ValidationError) as exc_info:
             loader.load(input=test_data.json())
 
-        expected_errors = [
-            {
-                "loc": ("actors", "dwayne_johnson", "movies"),
-                "msg": "value is not a valid dict",
-                "type": "type_error.dict",
-            },
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
-                "msg": "name [Mia Toretto] != full_name [Mia]",
-                "type": "value_error",
-            },
-        ]
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+        self.verify_exception(request, exc_info, "a")
 
         # ####
 
@@ -126,21 +98,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
             #     }
             loader.load(input=PosixPath(str(actor_data_path).replace(".json", ".b.json")))
 
-        expected_errors = [
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
-                "msg": "value is not a valid dict",
-                "type": "type_error.dict",
-            },
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
-                "msg": "name [Mia Toretto] != full_name [Toretto]",
-                "type": "value_error",
-            },
-        ]
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+        self.verify_exception(request, exc_info, "b")
 
         # ####
 
@@ -151,22 +109,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
             #     }
             loader.load(input=PosixPath(str(actor_data_path).replace(".json", ".c.json")))
 
-        expected_errors = [
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
-                "msg": "value is not a valid dict",
-                "type": "type_error.dict",
-            },
-            {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "name"),
-                "msg": "Either `name` or `first/last_name` must be provided.",
-                "type": "value_error",
-            },
-        ]
-
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+        self.verify_exception(request, exc_info, "c")
 
     def test_load_0_1_0(self, resource_path_root):
         """
@@ -183,3 +126,117 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         # Load it
         loader.load(input=input, verify_version=v0_1_0.VERSION)
+
+    def test_loadable_by_0_1_0(self, request, actor_data_dict: str):
+        """
+        Attempting to load v0.1.1 data with some of the new optional properties set
+        into a v0.1.0 model should fail.
+        """
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        module = loader.module()  # aktorz.model.v0_1_1
+
+        data = module.model(**actor_data_dict)  # Same as loader.load(input=actor_data_json)
+        json = data.json()
+
+        from .test_0_1_0 import TestSchemaVersionMajor0Minor1Patch0 as v0_1_0  # noqa:  N814
+
+        old_loader = Loader(version=v0_1_0.VERSION)
+        with pytest.raises(ValidationError) as exc_info:
+            old_data = old_loader.load(input=json)
+
+        self.verify_exception(request, exc_info)
+
+        # Get an aktorz.model.v0_1_1.Exporter instance
+        # capable of exporting `data` in v0.1.0 format.
+        exporter = module.exporter(model=data, version=v0_1_0.VERSION)
+        assert exporter.__module__ == "aktorz.model.v0_1_1"
+        assert exporter.__class__.__name__ == "Exporter"
+
+        # Export it as a dict
+        data = exporter.dict()
+        assert isinstance(data, dict)
+
+        # Load it with the v0.1.0 loader
+        old_data = old_loader.load(input=data)
+        assert old_data.schema_version == v0_1_0.VERSION
+
+    # Define expected pydantic errors keyed by test name and optional qualifiers.
+    # This helps reduce the noise level of each test and makes it easier to reuse
+    # the expected errors.
+    _expected_errors = {
+        "test_character_full_name-a": [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
+                "msg": "name [Mia Toretto] != full_name [Mia]",
+                "type": "value_error",
+            },
+        ],
+        "test_character_full_name-b": [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
+                "msg": "name [Mia Toretto] != full_name [Toretto]",
+                "type": "value_error",
+            },
+        ],
+        "test_character_full_name-c": [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "name"),
+                "msg": "Either `name` or `first/last_name` must be provided.",
+                "type": "value_error",
+            },
+        ],
+        "test_loadable_by_0_1_0": [
+            {
+                "loc": ("actors", "dwayne_johnson", "movies"),
+                "msg": "value is not a valid dict",
+                "type": "type_error.dict",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "first_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "last_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "dominic_toretto", "first_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "dominic_toretto", "last_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "first_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+            {
+                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "last_name"),
+                "msg": "extra fields not permitted",
+                "type": "value_error.extra",
+            },
+        ],
+    }

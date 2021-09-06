@@ -1,23 +1,34 @@
-from typing import Dict, List, NewType, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, NewType, Optional, Tuple, Union
 
-from pydantic import validator
+from pydantic import conint, constr, validator
 
 from .base_model import BaseModel
+
+# #### Constants
 
 # 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)
 VERSION = SchemaVersion("v0.1.1")
 
+# #### Data types
+
 # QUERY: Are there any reasonable constraints for a movie title?
 MovieTitle = NewType("MovieTitle", str)
 
-# FIXME: Constrain to 4-digit positive int.
-Year = NewType("Year", int)
+# https://en.wikipedia.org/wiki/History_of_film
+Year = NewType("Year", conint(ge=1850))  # type: ignore
 
 # Object identifiers, keys in the json maps / python dicts.
-MovieId = NewType("MovieId", str)
-PersonId = NewType("PersonId", str)
+MovieId = NewType("MovieId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
+PersonId = NewType("PersonId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
 ActorId = NewType("ActorId", PersonId)
+
+# #### Model classes
+
+
+def model(*args, **kwargs):
+    return Model(*args, **kwargs)
 
 
 class Person(BaseModel):
@@ -74,8 +85,8 @@ class Movie(BaseModel):
 
     cast: Optional[Dict[ActorId, CastMember]]
 
-    budget: Optional[int]
-    run_time_minutes: Optional[int]
+    budget: Optional[conint(ge=0)]  # type: ignore
+    run_time_minutes: Optional[conint(ge=0)]  # type: ignore
     year: Optional[Year]
 
 
@@ -109,3 +120,44 @@ class Model(BaseModel):
 
     schema_version: SchemaVersion
     actors: Dict[ActorId, Actor]
+
+
+# #### Import / Export
+
+
+def exporter(*args, **kwargs):
+    return Exporter(*args, **kwargs)
+
+
+@dataclass
+class Exporter:
+    """
+    Export a v0.1.1 model in a variety of formats and older versions.
+    """
+
+    model: Model
+    version: Union[SchemaVersion, str]
+
+    _data: Union[Dict[Any, Any], None] = None
+
+    def dict(self):
+        return self._transmute()
+
+    def _transmute(self):
+        if self._data:
+            return self._data
+
+        self._data = self.model.copy(deep=True).dict()
+        self._data["schema_version"] = self.version
+
+        # Remove the new fields added to CastMember
+        for actor in self._data["actors"].values():
+            iteron = actor["movies"] if isinstance(actor["movies"], list) else actor["movies"].values()
+            for movie in iteron:
+                if not movie["cast"]:
+                    continue
+                for cast_member in movie["cast"].values():
+                    cast_member.pop("first_name")
+                    cast_member.pop("last_name")
+
+        return self._data

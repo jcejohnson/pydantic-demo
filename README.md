@@ -1,4 +1,4 @@
-# Learning pydantic with a simple actors json file.
+# Managing and Migrating Data with pydantic
 
 This repository explores methods for managing and migrating data across versions using pydantic models.
 

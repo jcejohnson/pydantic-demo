@@ -35,11 +35,14 @@ class Loader:
 
     @validate_arguments
     def model(self):
+        module = self.module()
+        return getattr(module, "Model")
 
+    @validate_arguments
+    def module(self):
         version = str(self.version).replace(".", "_")
         module = importlib.import_module(f".{self.version_prefix}{version}", package=__package__)
-
-        return getattr(module, "Model")
+        return module
 
     @validate_arguments
     def load(
@@ -50,7 +53,7 @@ class Loader:
         update_version: Optional[bool] = True,
     ):
         """
-        TODO: Document properly.
+        TODO: Document this properly.
 
         if verify_version is True
             raise ValueError if data.schema_version != self.version

@@ -25,5 +25,6 @@ class BaseModel(PydanticBaseModel):
 
     def pop(self, key):
         value = self[key]
-        delattr(self, key)
+        if hasattr(self, key):
+            delattr(self, key)
         return value

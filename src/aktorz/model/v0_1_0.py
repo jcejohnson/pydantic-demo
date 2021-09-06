@@ -2,16 +2,21 @@ from typing import Dict, List, NewType, Optional, Tuple, Union
 
 from .base_model import BaseModel
 
+# #### Constants
+
 # 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)
 VERSION = SchemaVersion("v0.1.0")
 
+# #### Data types
 
 MovieTitle = NewType("MovieTitle", str)
 MovieId = NewType("MovieId", str)
 Year = NewType("Year", int)
 PersonId = NewType("PersonId", str)
 ActorId = NewType("ActorId", PersonId)
+
+# #### Model classes
 
 
 class Person(BaseModel):
@@ -62,3 +67,8 @@ class Model(BaseModel):
 
     schema_version: SchemaVersion
     actors: Dict[ActorId, Actor]
+
+
+# #### Import / Export
+
+# Nothing here for v0.1.0
