@@ -38,18 +38,20 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
     def test_character_full_name(self, request, actor_data_path: FilePath):
         """Verify that cast character name is handled properly"""
 
+        # FIXME: Break this into several smaller tests.
+
         loader = Loader(version=VERSION)
 
-        data = loader.load(input=actor_data_path)
+        model = loader.load(input=actor_data_path)
         # The Data:
         #    "dominic_toretto": {
         #      "actor": "vin_diesel",
         #      "first_name": "Dominic",
         #      "last_name": "Toretto"
         #    }
-        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Dominic Toretto"
-        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]["name"] == "Dominic Toretto"
-        assert data.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].dict() == {
+        assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Dominic Toretto"
+        assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]["name"] == "Dominic Toretto"
+        assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].dict() == {
             "actor": "vin_diesel",
             "first_name": "Dominic",
             "last_name": "Toretto",
@@ -58,32 +60,32 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         # ####
 
-        test_data = data.copy(deep=True)
-        test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name = None
+        test_model = model.copy(deep=True)
+        test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name = None
 
-        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
-        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].first_name == "Mia"
-        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name is None
+        assert test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].name == "Mia Toretto"
+        assert test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].first_name == "Mia"
+        assert test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"].last_name is None
 
         with pytest.raises(ValidationError) as exc_info:
-            loader.load(input=test_data.json())
+            loader.load(input=test_model.json())
 
         self.verify_exception(request, exc_info, "a")
 
         # ####
 
-        test_data = data.copy(deep=True)
-        test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"] = {
+        test_model = model.copy(deep=True)
+        test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"] = {
             "actor": "jordana_brewster",
             "name": "Mia Toretto",
             "first_name": "Mia",
         }
-        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["name"] == "Mia Toretto"
-        assert test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["first_name"] == "Mia"
-        assert "last_name" not in test_data.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]
+        assert test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["name"] == "Mia Toretto"
+        assert test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]["first_name"] == "Mia"
+        assert "last_name" not in test_model.actors["dwayne_johnson"].movies[0].cast["mia_toretto"]
 
         with pytest.raises(ValidationError) as exc_info:
-            loader.load(input=test_data.json())
+            loader.load(input=test_model.json())
 
         self.verify_exception(request, exc_info, "a")
 
@@ -127,6 +129,30 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         # Load it
         loader.load(input=input, verify_version=v0_1_0.VERSION)
 
+    def test_loader_module_and_ctors(self, actor_data_dict: str):
+        """
+        Verify that loader.foo() and module.foo() and Foo() all behave identically.
+        """
+
+        loader = Loader(version=self.__class__.VERSION)
+
+        module = loader.module()  # aktorz.model.v0_1_1
+        assert module.Model == loader.model()
+        assert module.Exporter == loader.exporter()
+
+        Model = module.Model
+
+        assert Model(**actor_data_dict) == module.model(**actor_data_dict)
+        assert Model(**actor_data_dict) == loader.model()(**actor_data_dict)
+        assert Model(**actor_data_dict) == loader.load(input=actor_data_dict)
+
+        Exporter = module.Exporter
+        eargs = {'model': Model(**actor_data_dict), 'version': 'v0.1.0'}
+
+        assert Exporter(**eargs) == module.exporter(**eargs)
+        assert Exporter(**eargs) == loader.exporter()(**eargs)
+        assert Exporter(**eargs) == loader.export(**eargs)
+
     def test_loadable_by_0_1_0(self, request, actor_data_dict: str):
         """
         Attempting to load v0.1.1 data with some of the new optional properties set
@@ -135,22 +161,21 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
-        module = loader.module()  # aktorz.model.v0_1_1
 
-        data = module.model(**actor_data_dict)  # Same as loader.load(input=actor_data_json)
-        json = data.json()
+        model = loader.load(input=actor_data_dict)
+        json = model.json()
 
         from .test_0_1_0 import TestSchemaVersionMajor0Minor1Patch0 as v0_1_0  # noqa:  N814
 
         old_loader = Loader(version=v0_1_0.VERSION)
         with pytest.raises(ValidationError) as exc_info:
-            old_data = old_loader.load(input=json)
+            old_model = old_loader.load(input=json)
 
         self.verify_exception(request, exc_info)
 
         # Get an aktorz.model.v0_1_1.Exporter instance
         # capable of exporting `data` in v0.1.0 format.
-        exporter = module.exporter(model=data, version=v0_1_0.VERSION)
+        exporter = loader.module().exporter(model=model, version=v0_1_0.VERSION)
         assert exporter.__module__ == "aktorz.model.v0_1_1"
         assert exporter.__class__.__name__ == "Exporter"
 
@@ -159,8 +184,8 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         assert isinstance(data, dict)
 
         # Load it with the v0.1.0 loader
-        old_data = old_loader.load(input=data)
-        assert old_data.schema_version == v0_1_0.VERSION
+        old_model = old_loader.load(input=data)
+        assert old_model.schema_version == v0_1_0.VERSION
 
     # Define expected pydantic errors keyed by test name and optional qualifiers.
     # This helps reduce the noise level of each test and makes it easier to reuse
