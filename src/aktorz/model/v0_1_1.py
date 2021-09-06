@@ -28,6 +28,7 @@ ActorId = NewType("ActorId", PersonId)
 
 
 def model(*args, **kwargs):
+    """Construct and return a Model instance"""
     return Model(*args, **kwargs)
 
 
@@ -126,6 +127,7 @@ class Model(BaseModel):
 
 
 def exporter(*args, **kwargs):
+    """Construct and return an Exporter instance"""
     return Exporter(*args, **kwargs)
 
 
@@ -135,6 +137,8 @@ class Exporter:
     Export a v0.1.1 model in a variety of formats and older versions.
     """
 
+    SUPPORTED_VERSIONS = ["v0.1.0", VERSION]
+
     model: Model
     version: Union[SchemaVersion, str]
 
@@ -143,11 +147,24 @@ class Exporter:
     def dict(self):
         return self._transmute()
 
+    def json(self, *args, **kwargs):
+        import json as dumper
+        return dumper.dumps(self._transmute(), *args, **kwargs)
+
     def _transmute(self):
+
+        if self.version not in Exporter.SUPPORTED_VERSIONS:
+            raise ValueError(f"Exporter {VERSION} cannot export {self.version}."
+                             f"Must be one of {Exporter.SUPPORTED_VERSIONS}")
+
         if self._data:
             return self._data
 
         self._data = self.model.copy(deep=True).dict()
+
+        if self.version == VERSION:
+            return self._data
+
         self._data["schema_version"] = self.version
 
         # Remove the new fields added to CastMember
@@ -159,5 +176,7 @@ class Exporter:
                 for cast_member in movie["cast"].values():
                     cast_member.pop("first_name")
                     cast_member.pop("last_name")
+
+        # Other v0.1.1 changes (e.g. - various constraints) do not break compatibility
 
         return self._data
