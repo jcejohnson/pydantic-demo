@@ -140,14 +140,14 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
         assert module.Model == loader.model()
         assert module.Exporter == loader.exporter()
 
-        Model = module.Model
+        Model = module.Model  # noqa:  N806
 
         assert Model(**actor_data_dict) == module.model(**actor_data_dict)
         assert Model(**actor_data_dict) == loader.model()(**actor_data_dict)
         assert Model(**actor_data_dict) == loader.load(input=actor_data_dict)
 
-        Exporter = module.Exporter
-        eargs = {'model': Model(**actor_data_dict), 'version': 'v0.1.0'}
+        Exporter = module.Exporter  # noqa:  N806
+        eargs = {"model": Model(**actor_data_dict), "version": "v0.1.0"}
 
         assert Exporter(**eargs) == module.exporter(**eargs)
         assert Exporter(**eargs) == loader.exporter()(**eargs)

@@ -144,18 +144,20 @@ class Exporter:
 
     _data: Union[Dict[Any, Any], None] = None
 
-    def dict(self):
+    def dict(self) -> Dict[Any, Any]:
         return self._transmute()
 
-    def json(self, *args, **kwargs):
+    def json(self, *args, **kwargs) -> str:
         import json as dumper
+
         return dumper.dumps(self._transmute(), *args, **kwargs)
 
-    def _transmute(self):
+    def _transmute(self) -> Dict[Any, Any]:
 
         if self.version not in Exporter.SUPPORTED_VERSIONS:
-            raise ValueError(f"Exporter {VERSION} cannot export {self.version}."
-                             f"Must be one of {Exporter.SUPPORTED_VERSIONS}")
+            raise ValueError(
+                f"Exporter {VERSION} cannot export {self.version}." f"Must be one of {Exporter.SUPPORTED_VERSIONS}"
+            )
 
         if self._data:
             return self._data
