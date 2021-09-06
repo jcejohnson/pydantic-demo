@@ -34,15 +34,48 @@ class Loader:
         return values["version"]
 
     @validate_arguments
+    def exporter(self):
+        """
+        Get the Exporter implementing implements the schema version provided to Loader().
+
+        Exporter = Loader(...).exporter()
+        exporter = Exporter(**{...})
+
+        """
+        module = self.module()
+        return getattr(module, "Exporter")
+
+    @validate_arguments
     def model(self):
+        """
+        Get the Model implementing implements the schema version provided to Loader().
+
+        Model = Loader(...).model()
+        data = Model(**{...})
+
+        """
         module = self.module()
         return getattr(module, "Model")
 
     @validate_arguments
     def module(self):
+        """
+        Get the module containing the objects implementing the schema version provided to Loader().
+
+        module = Loader(...).module()
+        Model = module.Model
+        data = Model(**{...})
+        Exporter = module.Exporter
+        exporter = Exporter(model=data, version=...)
+        old_data = exporter.dict()
+        """
         version = str(self.version).replace(".", "_")
         module = importlib.import_module(f".{self.version_prefix}{version}", package=__package__)
         return module
+
+    @validate_arguments
+    def export(self, **kwargs):
+        return self.exporter()(**kwargs)
 
     @validate_arguments
     def load(
@@ -53,6 +86,14 @@ class Loader:
         update_version: Optional[bool] = True,
     ):
         """
+        Create a Model instance from the input data.
+
+        Similar to:
+            Model = Loader(...).model()
+            data = Model(**{...})
+
+        input : json string, dict or FilePath
+
         TODO: Document this properly.
 
         if verify_version is True
