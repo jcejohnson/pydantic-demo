@@ -11,27 +11,14 @@ from .schema_version import SchemaVersion
 @dataclass
 class Loader:
 
-    # The prefix is used to build the module name and when validating
-    # the schema_version element.
-    version_prefix: Optional[str] = "v"
-
-    # The version must be semver compliant. (See validate_version().)
-    # We prefer a SchemaVersion instance but can tolerate anything
-    # SchemaVersion.parse_alt() can handle.
     version: Optional[Union[SchemaVersion, str]] = None
 
-    @validator("version", pre=True)
+    @validator("version")
     @classmethod
-    def validate_version(cls, version, values):
-        """
-        If the version is not a SchemaVersion parse it to extract an
-        optional prefix and the semver-compliant version.
-        """
-        assert not isinstance(version, SchemaVersion)
-        # if isinstance(version, SchemaVersion):
-        #     return version
-        values.update(SchemaVersion.parse_alt(version=version, **values))
-        return values["version"]
+    def validate_version(cls, v):
+        if isinstance(v, str):
+            return SchemaVersion(v)
+        return v
 
     @validate_arguments
     def exporter(self):
@@ -69,8 +56,8 @@ class Loader:
         exporter = Exporter(model=data, version=...)
         old_data = exporter.dict()
         """
-        version = str(self.version).replace(".", "_")
-        module = importlib.import_module(f".{self.version_prefix}{version}", package=__package__)
+        version = str(self.version.semver).replace(".", "_")
+        module = importlib.import_module(f".{self.version.prefix}{version}", package=__package__)
         return module
 
     @validate_arguments
@@ -133,16 +120,16 @@ class Loader:
             return str(data.schema_version) == str(self.version)
 
         def m2():
-            return str(data.schema_version) == self.version_prefix + str(self.version)
+            return str(data.schema_version) == self.version.prefix + str(self.version.semver)
 
         if m1() or m2():
             return True
 
         if isinstance(verify_version, bool):
             raise ValueError(
-                f"{data.schema_version} != {self.version}"
+                f"{data.schema_version} != {self.version.semver}"
                 " and "
-                f"{data.schema_version} != {self.version_prefix}{self.version}"
+                f"{data.schema_version} != {self.version.prefix}{self.version.semver}"
             )
 
         # FIXME: Simple, assumptive implementation with 100% coverage.

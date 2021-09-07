@@ -3,7 +3,8 @@ import json
 import pytest
 from pydantic import FilePath
 
-from aktorz.model import Loader
+from aktorz.model import Loader, SchemaVersion, SemVer
+from aktorz.model.schema_version import get_parts as schema_version_parts
 
 
 class BaseTest:
@@ -20,6 +21,26 @@ class BaseTest:
     _actor_data_json: str = ""
 
     # Tests common to all versions
+
+    def test_schema_version(self, schema_version):
+
+        assert str(SemVer("1.2.3")) == "1.2.3"
+        assert str(SemVer(1, minor=2, patch=3)) == "1.2.3"
+        assert str(SemVer(version=1, minor=2, patch=3)) == "1.2.3"
+
+        assert str(SchemaVersion("1.2.3")) == "v1.2.3"
+        assert str(SchemaVersion("x1.2.3")) == "x1.2.3"
+        assert str(SchemaVersion("ver1.2.3")) == "ver1.2.3"
+        assert str(SchemaVersion(prefix="x", semver="1.2.3")) == "x1.2.3"
+
+        parts = schema_version_parts(schema_version)
+        semver = parts["semver"]
+        assert str(SemVer(semver)) == semver
+
+        assert str(SchemaVersion(schema_version)) == schema_version
+
+        Loader(version=SchemaVersion(schema_version))
+        Loader(version=schema_version).version == SchemaVersion(schema_version)
 
     def test_model(self, model_module, schema_version):
         """Test loading of a versioned model"""

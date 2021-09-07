@@ -1,55 +1,34 @@
-# semver3 uses `Version`
 import re
 
 from semver import VersionInfo as Version  # type: ignore
 
+from .base_model import BaseModel
 
-class SchemaVersion(Version):
-    """Make semver.Version compatible with pydantic."""
+DEFAULT_PREFIX = "v"
 
-    _PARSE_ALT_REGEX = re.compile(
-        r"""
+SCHEMA_VERSION_REGEX = re.compile(
+    r"""
         ^
-        (?P<prefix>[^\d*])
-        (?P<version>\d.*)
-        """,
-        re.VERBOSE,
-    )
+        (?P<prefix>[^\d]+)?
+        (?P<semver>\d[\d\.].*)
+    """,
+    re.VERBOSE,
+)
 
-    @classmethod
-    def parse_alt(cls, version, version_prefix=None, as_dict=True):
-        """
-        Parse a version identifier of some alternate datatype that
-        is not compatible with semver.Version.
-        """
 
-        def _return(p, v):
-            return {"version_prefix": p, "version": v} if as_dict else [p, v]
+def get_parts(schema_version: str, default_prefix: str = DEFAULT_PREFIX):
+    parts = SCHEMA_VERSION_REGEX.match(schema_version).groupdict()  # type: ignore
+    prefix = parts["prefix"] or default_prefix
+    semver = parts["semver"] or schema_version
+    return {"prefix": prefix, "semver": semver}
 
-        # FIXME: Simple, assumptive implementation with 100% coverage.
-        # Alternate implemenations require more test cases.
 
-        assert not (version_prefix is None)
-        # TODO: Morethorough implemenation but requires more test cases.
-        # if version_prefix is None:
-        #     version_prefix = ""
-
-        assert not (version is None or isinstance(version, SchemaVersion))
-        # TODO: Morethorough implemenation but requires more test cases.
-        # if version is None or isinstance(version, SchemaVersion):
-        #     return _return(version_prefix, version)
-
-        assert isinstance(version, str)
-        # TODO: Morethorough implemenation but requires more test cases.
-        # if not isinstance(version, str):
-        #     raise TypeError(f"cannot parse {version} of type {type(version)}")
-
-        version_parts = cls._PARSE_ALT_REGEX.match(version).groupdict()  # type: ignore
-
-        version = version_parts["version"] or version
-        version_prefix = version_parts["prefix"] or version_prefix
-
-        return _return(version_prefix, version)
+class SemVer(Version):
+    def __init__(self, version, **kwargs):
+        if isinstance(version, str):
+            super().__init__(**Version.parse(version).to_dict())
+        else:
+            super().__init__(version, **kwargs)
 
     @classmethod
     def __get_validators__(cls):
@@ -57,23 +36,20 @@ class SchemaVersion(Version):
 
     @classmethod
     def validate(cls, v):
+        return v
 
-        # FIXME: Simple, assumptive implementation with 100% coverage.
 
-        assert isinstance(v, str)
-        assert Version.isvalid(v)
-        return Version.parse(v)
+class SchemaVersion(BaseModel):
+    """Make semver.Version compatible with pydantic."""
 
-        # TODO: Morethorough implemenation but requires more test cases.
+    prefix: str = DEFAULT_PREFIX
+    semver: SemVer
 
-        # if isinstance(v, str):
-        #     # Version.parse() will throw ValueError if `v` is not a valid semver
-        #     # so we check isvalid() and throw our own ValueError if necessary.
-        #     if Version.isvalid(v):
-        #         return Version.parse(v)
-        #     raise ValueError("invalid SchemaVersion (semver.Version) format in string")
+    def __init__(self, *args, **kwargs):
+        if args and isinstance(args[0], str):
+            super().__init__(**get_parts(args[0], default_prefix=DEFAULT_PREFIX))
+        else:
+            super().__init__(**kwargs)
 
-        # if isinstance(v, Version):
-        #     return v
-
-        # raise TypeError("string or semver.Version required")
+    def __str__(self):
+        return f"{self.prefix}{self.semver}"
