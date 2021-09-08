@@ -181,4 +181,25 @@ class Exporter:
 
         # Other v0.1.1 changes (e.g. - various constraints) do not break compatibility
 
+        # I should be able to do this but I can't figure out how (or if pydantic)
+        # even supports such a thing.
+        # See: https://github.com/samuelcolvin/pydantic/discussions/3193
+        #
+        # self._data = self.model.dict(
+        #     exclude={
+        #         'actors': {
+        #             '__all__': {
+        #                 'movies': {
+        #                     '__all__': {
+        #                         'cast': {
+        #                             '__all__':
+        #                                 {'first_name': ..., 'last_name': ...}
+        #                         }
+        #                     }
+        #                 }
+        #             }
+        #         }
+        #     }
+        # )
+
         return self._data
