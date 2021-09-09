@@ -1,3 +1,5 @@
+import copy
+
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
@@ -36,6 +38,17 @@ class BaseModel(PydanticBaseModel):
 
 # Added in v0.1.2
 class BaseDictModel(BaseModel):
+    def keys(self):
+        return self.__root__.keys()
+
+    # Not yet required.
+    # def items(self):
+    #     return self.__root__.items()
+
+    # Not yet required.
+    # def values(self):
+    #     return self.dict().values()
+
     def __iter__(self):
         return iter(self.__root__)
 
@@ -44,3 +57,6 @@ class BaseDictModel(BaseModel):
 
     def __getitem__(self, item):
         return self.__root__[item]
+
+    def __deepcopy__(self, memo):
+        return copy.deepcopy(self.__root__)

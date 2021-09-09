@@ -1,25 +1,59 @@
+import json
+import os
 from pathlib import PosixPath
 
 import pytest
 from pydantic import FilePath, ValidationError
 
 from aktorz.model import Loader
-from aktorz.model.v0_1_1 import VERSION
+from aktorz.model.v0_1_2 import VERSION
 
 from .base_test import BaseTest
 
+"""
+The only difference between v0.1.1 and v0.1.2 is declaring first-class
+objects for collections of things. We can reuse the v0.1.1 test data
+as long as we change each file's schema_version to v0.1.2.
 
-class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
-    """Schema Version 0.1.1 tests."""
+The only difference in the tests themselves are in the expected "paths"
+to elements in the test_character_full_name failures.
+"""
+
+
+def setup_module(module):
+    basename = os.path.join(os.path.dirname(module.__file__), "testresources", "actor-data-0.1.")
+    _copy(basename, "")
+    _copy(basename, ".a")
+    _copy(basename, ".b")
+    _copy(basename, ".c")
+
+
+def _copy(basename, sfx):
+    source = basename + f"1{sfx}.json"
+    target = basename + f"2{sfx}.json"
+    with open(source) as i:
+        data = json.load(i)
+        data["schema_version"] = VERSION
+        with open(target, "w") as o:
+            json.dump(data, o)
+
+
+def teardown_module(module):
+    basename = os.path.join(os.path.dirname(module.__file__), "testresources", "actor-data-0.1.2")
+    os.remove(basename + ".json")
+    os.remove(basename + ".a.json")
+    os.remove(basename + ".b.json")
+    os.remove(basename + ".c.json")
+
+
+class TestSchemaVersionMajor0Minor1Patch2(BaseTest):
+    """Schema Version 0.1.2 tests."""
 
     # Class constants required by BaseTest
 
-    MODEL_MODULE = "aktorz.model.v0_1_1"
-    TEST_FILE = "actor-data-0.1.1.json"
-    VERSION = "v0.1.1"
-
-    # Fixtures to provide copies of the raw data to each test function.
-
+    MODEL_MODULE = "aktorz.model.v0_1_2"
+    TEST_FILE = "actor-data-0.1.2.json"
+    VERSION = "v0.1.2"
     # Tests...
 
     # Every concrete test class needs this test to ensure that we don't
@@ -119,10 +153,10 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
     def test_load_0_1_0(self, resource_path_root):
         """
-        Verify that our v0.1.1 model will load a v0.1.0 document.
+        Verify that our v0.1.2 model will load a v0.1.0 document.
         """
 
-        # Fetch our v0.1.1 loader
+        # Fetch our v0.1.2 loader
         loader = Loader(version=self.__class__.VERSION)
 
         # Construct the v0.1.0 test file path
@@ -140,7 +174,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         loader = Loader(version=self.__class__.VERSION)
 
-        module = loader.module()  # aktorz.model.v0_1_1
+        module = loader.module()  # aktorz.model.v0_1_2
         assert module.Model == loader.model()
         assert module.Exporter == loader.exporter()
 
@@ -159,7 +193,7 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
     def test_loadable_by_0_1_0(self, request, actor_data_dict: str):
         """
-        Attempting to load v0.1.1 data with some of the new optional properties set
+        Attempting to load v0.1.2 data with some of the new optional properties set
         into a v0.1.0 model should fail.
         """
 
@@ -177,10 +211,10 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
 
         self.verify_exception(request, exc_info)
 
-        # Get an aktorz.model.v0_1_1.Exporter instance
+        # Get an aktorz.model.v0_1_2.Exporter instance
         # capable of exporting `data` in v0.1.0 format.
         exporter = loader.module().exporter(model=model, version=v0_1_0.VERSION)
-        assert exporter.__module__ == "aktorz.model.v0_1_1"
+        assert exporter.__module__ == "aktorz.model.v0_1_2"
         assert exporter.__class__.__name__ == "Exporter"
 
         # Export it as a dict
@@ -195,38 +229,71 @@ class TestSchemaVersionMajor0Minor1Patch1(BaseTest):
     # This helps reduce the noise level of each test and makes it easier to reuse
     # the expected errors.
     _expected_errors = {
+        # Note that the test_character_full_name* expectations are different between
+        # v0.1.1 and v0.1.2 because of the model change. This does not affect the
+        # functionality but it may affect error handling code if the paths are important.
         "test_character_full_name-a": [
             {
-                "loc": ("actors", "dwayne_johnson", "movies"),
+                "loc": ("actors", "__root__", "dwayne_johnson", "movies", "__root__"),
                 "msg": "value is not a valid dict",
                 "type": "type_error.dict",
             },
             {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
+                "loc": (
+                    "actors",
+                    "__root__",
+                    "dwayne_johnson",
+                    "movies",
+                    0,
+                    "cast",
+                    "__root__",
+                    "mia_toretto",
+                    "name",
+                ),
                 "msg": "name [Mia Toretto] != full_name [Mia]",
                 "type": "value_error",
             },
         ],
         "test_character_full_name-b": [
             {
-                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "loc": ("actors", "__root__", "dwayne_johnson", "movies", "__root__", "cast"),
                 "msg": "value is not a valid dict",
                 "type": "type_error.dict",
             },
             {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "mia_toretto", "name"),
+                "loc": (
+                    "actors",
+                    "__root__",
+                    "dwayne_johnson",
+                    "movies",
+                    0,
+                    "cast",
+                    "__root__",
+                    "mia_toretto",
+                    "name",
+                ),
                 "msg": "name [Mia Toretto] != full_name [Toretto]",
                 "type": "value_error",
             },
         ],
         "test_character_full_name-c": [
             {
-                "loc": ("actors", "dwayne_johnson", "movies", "cast"),
+                "loc": ("actors", "__root__", "dwayne_johnson", "movies", "__root__", "cast"),
                 "msg": "value is not a valid dict",
                 "type": "type_error.dict",
             },
             {
-                "loc": ("actors", "dwayne_johnson", "movies", 0, "cast", "brian_oconner", "name"),
+                "loc": (
+                    "actors",
+                    "__root__",
+                    "dwayne_johnson",
+                    "movies",
+                    0,
+                    "cast",
+                    "__root__",
+                    "brian_oconner",
+                    "name",
+                ),
                 "msg": "Either `name` or `first/last_name` must be provided.",
                 "type": "value_error",
             },
