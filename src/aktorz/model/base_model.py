@@ -38,8 +38,10 @@ class BaseModel(PydanticBaseModel):
 
 # Added in v0.1.2
 class BaseDictModel(BaseModel):
-    def keys(self):
-        return self.__root__.keys()
+
+    # Not yet required.
+    # def keys(self):
+    #     return self.__root__.keys()
 
     # Not yet required.
     # def items(self):
@@ -49,11 +51,13 @@ class BaseDictModel(BaseModel):
     # def values(self):
     #     return self.dict().values()
 
-    def __iter__(self):
-        return iter(self.__root__)
+    # Not yet required.
+    # def __iter__(self):
+    #     return iter(self.__root__)
 
-    def __getattr__(self, item):
-        return self.__root__[item]
+    # Not yet required.
+    # def __getattr__(self, item):
+    #     return self.__root__[item]
 
     def __getitem__(self, item):
         return self.__root__[item]
