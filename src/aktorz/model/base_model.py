@@ -6,6 +6,10 @@ class BaseModel(PydanticBaseModel):
     class Config:
         extra: str = Extra.forbid
 
+    # Added in v0.1.2
+    def __iter__(self):
+        return iter(self.dict())
+
     def __getitem__(self, key):
         return getattr(self, key)
 
@@ -28,3 +32,15 @@ class BaseModel(PydanticBaseModel):
         if hasattr(self, key):
             delattr(self, key)
         return value
+
+
+# Added in v0.1.2
+class BaseDictModel(BaseModel):
+    def __iter__(self):
+        return iter(self.__root__)
+
+    def __getattr__(self, item):
+        return self.__root__[item]
+
+    def __getitem__(self, item):
+        return self.__root__[item]
