@@ -17,11 +17,21 @@ VERSION = SchemaVersion("v0.1.1")
 MovieTitle = NewType("MovieTitle", str)
 
 # https://en.wikipedia.org/wiki/History_of_film
+# 0.1.0 : int
+# 0.1.1 : conint(ge=1850)
 Year = NewType("Year", conint(ge=1850))  # type: ignore
 
 # Object identifiers, keys in the json maps / python dicts.
+
+# 0.1.0 : str
+# 0.1.1 : constr(regex=r"[a-z][a-z0-9_]+")
 MovieId = NewType("MovieId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
+
+# 0.1.0 : str
+# 0.1.1 : constr(regex=r"[a-z][a-z0-9_]+")
 PersonId = NewType("PersonId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
+
+# 0.1.0 : PersonId
 ActorId = NewType("ActorId", PersonId)
 
 # #### Model classes
@@ -68,6 +78,7 @@ class CastMember(BaseModel):
     # `always` is required so that validate_name() is called when name is not provided.
     @validator("name", always=True)
     @classmethod
+    # Added in 0.1.1
     def validate_name(cls, name, values):
         """
         Added in 0.1.1
@@ -97,10 +108,12 @@ class Movie(BaseModel):
     cast: Optional[Dict[ActorId, CastMember]]
 
     # 0.1.0 : Optional[int]
-    budget: Optional[int]
+    # 0.1.1 : Optional[conint(ge=0)]
+    budget: Optional[conint(ge=0)]  # type: ignore
 
     # 0.1.0 : Optional[int]
-    run_time_minutes: Optional[int]
+    # 0.1.1 : Optional[conint(ge=0)]
+    run_time_minutes: Optional[conint(ge=0)]  # type: ignore
 
     # 0.1.0 : Optional[Year]
     year: Optional[Year]
@@ -158,6 +171,7 @@ def exporter(*args, **kwargs):
 
 
 @dataclass
+# 0.1.1
 class Exporter:
     """
     Export a v0.1.1 model in a variety of formats and older versions.
