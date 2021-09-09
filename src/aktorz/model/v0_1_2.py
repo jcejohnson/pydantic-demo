@@ -206,7 +206,7 @@ class Exporter:
     Export a v0.1.1 model in a variety of formats and older versions.
     """
 
-    SUPPORTED_VERSIONS = ["v0.1.0", VERSION]
+    SUPPORTED_VERSIONS = ["v0.1.0", "v0.1.1", VERSION]
 
     model: Model
     version: Union[SchemaVersion, str]
