@@ -64,6 +64,8 @@ packaging==21.0
     #   pytest
     #   sphinx
     #   tox
+parameterized==0.8.1
+    # via -r dev-requirements.in
 pathspec==0.9.0
     # via black
 pep8-naming==0.12.1
