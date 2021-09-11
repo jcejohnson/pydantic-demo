@@ -3,19 +3,22 @@ import inspect
 import os
 import pkgutil
 from types import ModuleType
-from typing import Any, Dict
+from typing import Dict
 
 import pytest
-from parameterized import parameterized
+from parameterized import parameterized  # type: ignore
 
-from aktorz.model import BaseModel, loader, schema_version
+from aktorz.model import BaseModel, loader, schema_version  # type: ignore
+from aktorz.model.supported_versions import SUPPORTED_VERSIONS
 
 AKTORZ_MODEL_PATH: str = os.path.dirname(inspect.getfile(loader))
-VERSION_MODULES_BY_NAME: Dict[str, ModuleType] = None
-VERSION_MODULES_BY_VERSION: Dict[str, ModuleType] = None
+VERSION_MODULES_BY_NAME: Dict[str, ModuleType] = dict()
+VERSION_MODULES_BY_VERSION: Dict[str, ModuleType] = dict()
 
 
 def setup_module(module):
+    global VERSION_MODULES_BY_NAME
+    global VERSION_MODULES_BY_VERSION
     VERSION_MODULES_BY_NAME = get_version_modules_by_name()
     VERSION_MODULES_BY_VERSION = get_version_modules_by_version()
 
@@ -37,16 +40,16 @@ def _build_version_modules_by_x():
     if VERSION_MODULES_BY_NAME and VERSION_MODULES_BY_VERSION:
         return
 
+    def _has_model_class(name):
+        return hasattr(importlib.import_module(f".{name}", package=loader.__package__), "Model")
+
     by_name = dict()
     by_version = dict()
     for m in pkgutil.walk_packages([AKTORZ_MODEL_PATH]):
 
         name = m.name
 
-        if not (
-            name.startswith(schema_version.DEFAULT_PREFIX)
-            or hasattr(importlib.import_module(f".{name}", package=loader.__package__), "Model")
-        ):
+        if not (name.startswith(schema_version.DEFAULT_PREFIX) or _has_model_class(name)):
             continue
 
         by_name[name] = module = importlib.import_module(f".{name}", package=loader.__package__)
@@ -70,9 +73,14 @@ class TestSupportedVersions:
         return AKTORZ_MODEL_PATH
 
     @pytest.fixture
-    def version_modules_by_name(self, aktorz_model_path):
+    def version_modules_by_name(self):
         """Gather the versioned model modules."""
         return VERSION_MODULES_BY_NAME
+
+    @pytest.fixture
+    def version_modules_by_version(self):
+        """Gather the versioned model modules."""
+        return VERSION_MODULES_BY_VERSION
 
     def test_aktorz_model_path(self, aktorz_model_path: str):
         """Verify that the filesystem path is valid."""
@@ -105,7 +113,9 @@ class TestSupportedVersions:
     @parameterized.expand(
         [(name, module, get_version_modules_by_version()) for name, module, in get_version_modules_by_name().items()]
     )
-    def test_one_implementation_per_version(self, name, module, version_modules_by_version: Dict[str, ModuleType]):
+    def test_only_one_implementation_per_version(
+        self, name, module, version_modules_by_version: Dict[str, ModuleType]
+    ):
         """Only one version module can support a given version."""
 
         # Skip any invalid modules. Rely on test_version_module_validity() to sort those out.
@@ -116,4 +126,24 @@ class TestSupportedVersions:
         assert version_modules_by_version[version] == module, (
             f"Version module [{name}] duplicates existing version [{version}] "
             f"provided by [{version_modules_by_version[version].__name__}]"
+        )
+
+    @parameterized.expand(
+        [(version, module) for version, module, in get_version_modules_by_version().items()]
+    )
+    def test_every_implementation_is_useful(self, version, module):
+        """Veryfy that every version implmentation module is implementing a supported version.
+        Any modules that are not implementing supported versions are unnecessary and should be deleted.
+        """
+
+        assert version in SUPPORTED_VERSIONS, (
+            f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
+        )
+
+    @parameterized.expand([(version, get_version_modules_by_version()) for version in SUPPORTED_VERSIONS])
+    def test_every_version_is_implemented(self, version, version_modules_by_version):
+        """Verify that every supported version has an implementation module."""
+
+        assert version in version_modules_by_version, (
+            f"Missing implementation for supported version [{version}]."
         )
