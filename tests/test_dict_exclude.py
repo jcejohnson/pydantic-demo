@@ -13,6 +13,7 @@ Test functions test_exclude_first_name_fail_* show my various attempts
 
 from typing import Dict, List, Optional
 
+import pytest
 from pydantic import BaseModel
 
 
@@ -128,58 +129,66 @@ class TestDictExclude:
     # out how to make it work.
     # https://github.com/samuelcolvin/pydantic/discussions/3193
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_a(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {...: {"last_name"}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {...: {"last_name"}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_b(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {...: {"last_name", ...}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {...: {"last_name", ...}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_c(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"__all__": {"last_name"}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"__all__": {"last_name"}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_d(self):
         # Fail
         library = Library(movies=movies)
         assert library.dict(
             exclude_unset=True, exclude={"movies": {0: {"cast": {"__all__": {"last_name", ...}}}}}
-        ) != dict({"movies": movies_no_last_name})
+        ) == dict({"movies": movies_no_last_name})
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_e(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"*": {"last_name"}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"*": {"last_name"}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_f(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"*": {"last_name", ...}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {"*": {"last_name", ...}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_g(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {None: {"last_name"}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {None: {"last_name"}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
 
+    @pytest.mark.xfail
     def test_exclude_first_name_fail_h(self):
         # Fail
         library = Library(movies=movies)
-        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {None: {"last_name", ...}}}}}) != dict(
+        assert library.dict(exclude_unset=True, exclude={"movies": {0: {"cast": {None: {"last_name", ...}}}}}) == dict(
             {"movies": movies_no_last_name}
         )
