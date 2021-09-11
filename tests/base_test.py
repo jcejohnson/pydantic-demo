@@ -108,18 +108,20 @@ class BaseTest:
     @pytest.fixture
     def actor_data_dict(self, actor_data_path):
         """Returns the raw actor data as a dict."""
-        if not self.__class__._actor_data_dict:
-            self.__class__._actor_data_dict = json.loads(actor_data_path.read_text())
-        return self.__class__._actor_data_dict
+        return json.loads(actor_data_path.read_text())
+        # if not self.__class__._actor_data_dict:
+        #     self.__class__._actor_data_dict = json.loads(actor_data_path.read_text())
+        # return self.__class__._actor_data_dict
 
     @pytest.fixture
     def actor_data_json(self, actor_data_path):
         """Returns the raw (directly from the file) actor data as a json string.
         For assertions you should use test_data_json instead.
         """
-        if not self.__class__._actor_data_json:
-            self.__class__._actor_data_json = actor_data_path.read_text()
-        return self.__class__._actor_data_json
+        return actor_data_path.read_text()
+        # if not self.__class__._actor_data_json:
+        #     self.__class__._actor_data_json = actor_data_path.read_text()
+        # return self.__class__._actor_data_json
 
     @pytest.fixture
     def test_data_dict(self, actor_data_dict):
