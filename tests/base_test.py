@@ -3,8 +3,8 @@ import json
 import pytest
 from pydantic import FilePath
 
-from aktorz.model import Loader, SchemaVersion, SemVer
-from aktorz.model.schema_version import get_parts as schema_version_parts
+from aktorz.model import Loader, SchemaVersion, SemVer  # type: ignore
+from aktorz.model.schema_version import get_parts as schema_version_parts  # type: ignore
 
 
 class BaseTest:

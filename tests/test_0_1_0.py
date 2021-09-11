@@ -3,8 +3,8 @@ import copy
 import pytest
 from pydantic import FilePath
 
-from aktorz.model import Loader
-from aktorz.model.v0_1_0 import VERSION
+from aktorz.model import Loader  # type: ignore
+from aktorz.model.v0_1_0 import VERSION  # type: ignore
 
 from .base_test import BaseTest
 
