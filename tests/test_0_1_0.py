@@ -4,6 +4,7 @@ import pytest
 from pydantic import FilePath
 
 from aktorz.model import Loader  # type: ignore
+from aktorz.model.schema_version import SchemaVersion  # type: ignore
 from aktorz.model.v0_1_0 import VERSION  # type: ignore
 
 from .base_test import BaseTest
@@ -70,7 +71,7 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
         with pytest.raises(ValueError) as exc_info:
             loader.load(input='{"schema_version":"v0.9.0", "actors":{}}')
 
-        assert str(exc_info.value) == "v0.9.0 != 0.1.0 and v0.9.0 != v0.1.0"
+        assert str(exc_info.value) == "Input of version [v0.9.0] cannot be read by Model version [v0.1.0]."
 
     def test_load_0_1_1(self, request, resource_path_root):
         """
@@ -96,7 +97,7 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
 
         self.verify_exception(request, exc_info)
 
-    def test_mappable(self, actor_data_json: str, test_data_dict: str):
+    def test_mappable(self, test_data_dict: str):
         """
         Test the ability to treat model objects as maps.
         - Reference
@@ -107,7 +108,7 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
-        model = loader.load(input=actor_data_json)
+        model = loader.load(input=test_data_dict)
 
         # Reference
 
@@ -143,8 +144,18 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
         target["actors"]["dwayne_johnson"]["movies"][0]["year"] = None  # type: ignore
         target["actors"]["dwayne_johnson"]["spouses"] = None  # type: ignore
 
-        # Now, convert the model to a dict and compare it with our direct-from-json dict
-        assert model.dict() == target
+        # Now, convert the model to a dict and compare it with our direct-from-json dict.
+        # Behind the scenes our Model will convert the schema_version attribute to a SchemaVersion
+        # so we have to aslo account for that.
+
+        assert isinstance(target['schema_version'], str)
+        assert target['schema_version'] == self.__class__.VERSION
+        target['schema_version'] = SchemaVersion(target['schema_version'])
+
+        data = model.dict()
+        assert 'prefix' in data['schema_version']
+        assert 'semver' in data['schema_version']
+        assert data == target
 
         # Update
 
@@ -198,13 +209,16 @@ class TestSchemaVersionMajor0Minor1Patch0(BaseTest):
 
     def _recurse(self, d):
 
-        if (d is None) or isinstance(d, int) or isinstance(d, str):
+        if (d is None):
             return d
 
         if isinstance(d, list) or isinstance(d, tuple):
             return [self._recurse(v) for v in d]
 
-        return [self._recurse(v) for k, v in d.items()]
+        if isinstance(d, dict):
+            return [self._recurse(v) for k, v in d.items()]
+
+        return d
 
     _expected_errors = {
         "test_load_0_1_1": [

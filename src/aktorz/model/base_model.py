@@ -64,3 +64,8 @@ class BaseDictModel(BaseModel):
 
     def __deepcopy__(self, memo):
         return copy.deepcopy(self.__root__)
+
+
+# Added in v0.1.2
+class BaseExporter:
+    pass

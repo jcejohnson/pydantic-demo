@@ -136,22 +136,18 @@ class TestSupportedVersions:
             f"provided by [{version_modules_by_version[version].__name__}]"
         )
 
-    @parameterized.expand(
-        [(version, module) for version, module, in get_version_modules_by_version().items()]
-    )
+    @parameterized.expand([(version, module) for version, module, in get_version_modules_by_version().items()])
     def test_every_implementation_is_useful(self, version, module):
         """Veryfy that every version implmentation module is implementing a supported version.
         Any modules that are not implementing supported versions are unnecessary and should be deleted.
         """
 
-        assert version in SUPPORTED_VERSIONS, (
-            f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
-        )
+        assert (
+            version in SUPPORTED_VERSIONS
+        ), f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
 
     @parameterized.expand([(version, get_version_modules_by_version()) for version in SUPPORTED_VERSIONS])
     def test_every_version_is_implemented(self, version, version_modules_by_version):
         """Verify that every supported version has an implementation module."""
 
-        assert version in version_modules_by_version, (
-            f"Missing implementation for supported version [{version}]."
-        )
+        assert version in version_modules_by_version, f"Missing implementation for supported version [{version}]."

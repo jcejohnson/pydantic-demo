@@ -1,18 +1,32 @@
 import importlib
+from enum import Enum, auto
 from pathlib import PosixPath
+from types import ModuleType
 from typing import Optional, Union
 
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
+from .base_model import BaseExporter, BaseModel
 from .schema_version import SchemaVersion
+
+
+class Validations(Enum):
+    """Ways in which Loader.load() can validate the incoming data against the Model."""
+
+    NONE = None
+    READABLE = auto()
+    WRITABLE = auto()
+    IDENTICAL = auto()
 
 
 @dataclass
 class Loader:
     """Load data and create Models."""
 
-    # The version of the data to be loaded and of the model created from that data.
+    """The version of the Model created.
+    This also implies that the data is compatible with that Model.
+    """
     version: Optional[Union[SchemaVersion, str]] = None
 
     @validator("version")
@@ -22,7 +36,7 @@ class Loader:
             return SchemaVersion(v)
         return v
 
-    def export(self, *args, **kwargs):
+    def export(self, *args, **kwargs) -> BaseExporter:
         """
         Construct and return an Exporter for the model.
 
@@ -40,7 +54,7 @@ class Loader:
 
     def exporter(self):
         """
-        Get the Exporter implementing implements the schema version provided to Loader().
+        Get the Exporter class which implements the schema version provided to Loader().
 
         loader = Loader(...)
         Exporter = loader.exporter()
@@ -55,10 +69,9 @@ class Loader:
         self,
         *,
         input: Union[str, dict, FilePath],
-        verify_version: Optional[Union[bool, str]] = True,
+        validate_version: Optional[Validations] = Validations.READABLE,
         update_version: Optional[bool] = True,
-        # TODO : Implement input_version:Optional[Union[SchemaVersion, str]] = None
-    ):
+    ) -> BaseModel:
         """
         Create a Model instance from the input data.
 
@@ -71,17 +84,20 @@ class Loader:
 
         TODO: Document this properly.
 
-        If verify_version is True
-            raise ValueError if data.schema_version != self.version
+        if validate_version is not Validations.NONE
+            if data.schema_version is not valid against self.version
+                raise ValueError
+            if update_version is True
+                data.schema_version = self.version
+            else
+                data.schema_version = SchemaVersion(data.schema_version)
 
-        If verify_version is a str and update_version is True
-            data.schema_version = self.version
         """
-        return self._load(input=input, verify_version=verify_version, update_version=update_version)
+        return self._load(input=input, validate_version=validate_version, update_version=update_version)
 
     def model(self):
         """
-        Get the Model implementing implements the schema version provided to Loader().
+        Get the Model class which implements the schema version provided to Loader().
 
         loader = Loader(...)
         Model = loader.model()
@@ -90,7 +106,7 @@ class Loader:
         module = self.module()
         return getattr(module, "Model")
 
-    def module(self):
+    def module(self) -> ModuleType:
         """
         Get the module containing the objects implementing the schema version provided to Loader().
 
@@ -111,17 +127,14 @@ class Loader:
     # #### Implementation details
 
     def _load(
-        self,
-        *,
-        input: Union[str, dict, FilePath],
-        verify_version: Optional[Union[bool, str]] = True,
-        update_version: Optional[bool] = True,
-        # TODO : Implement input_version:Optional[Union[SchemaVersion, str]] = None
-    ):
+        self, *, input: Union[str, dict, FilePath], validate_version: Validations, update_version: bool
+    ) -> BaseModel:
+
         model = self.model()
 
         # FIXME: Simple, assumptive implementation with 100% coverage.
         input_type = type(input)
+
         assert input_type in [FilePath, PosixPath, dict, str]
 
         if input_type in [FilePath, PosixPath]:
@@ -134,43 +147,41 @@ class Loader:
             # TODO: Create a test case for this.
             raise TypeError(f"Unexpected input type {input.__class__}")
 
-        if verify_version:
-            self._verify_version(data, verify_version, update_version)
+        if self._validate_version(data=data, validate_version=validate_version, update_version=update_version):
+            return data
 
-        return data
+        raise ValueError(f"Input schema version [{data.schema_version}] is invalid.")
 
-    def _verify_version(self, data, verify_version, update_version):
+    def _validate_version(self, *, data: BaseModel, validate_version: Validations, update_version: bool) -> bool:
 
-        # TODO: Do a real semver compatibility check.
+        # Note: validate_version() ensures that self.version is always a SchemaVersion()
+        assert isinstance(self.version, SchemaVersion)
+        assert isinstance(validate_version, Validations)
 
-        def m1():
-            return str(data.schema_version) == str(self.version)
-
-        def m2():
-            return str(data.schema_version) == self.version.prefix + str(self.version.semver)
-
-        if m1() or m2():
+        if validate_version == Validations.NONE:
             return True
 
-        if isinstance(verify_version, bool):
-            raise ValueError(
-                f"{data.schema_version} != {self.version.semver}"
-                " and "
-                f"{data.schema_version} != {self.version.prefix}{self.version.semver}"
-            )
+        data_version = data.schema_version if isinstance(
+            data.schema_version, SchemaVersion) else SchemaVersion(data.schema_version)
 
-        # FIXME: Simple, assumptive implementation with 100% coverage.
+        if validate_version == Validations.IDENTICAL:
+            if self.version != data_version:
+                raise ValueError(
+                    f"Input of version [{data_version}] does not match Model version [{self.version}]."
+                )
 
-        assert str(data.schema_version) == verify_version
-        if update_version:
-            data.schema_version = self.version
+        if validate_version == Validations.READABLE:
+            if not self.version.can_read(data_version):
+                raise ValueError(
+                    f"Input of version [{data_version}] cannot be read by Model version [{self.version}]."
+                )
+
+        if validate_version == Validations.WRITABLE:
+            if not self.version.can_write(data_version):
+                raise ValueError(
+                    f"Input of version [{data_version}] cannot be written by Model version [{self.version}]."
+                )
+
+        data.schema_version = self.version if update_version else data_version
+
         return True
-
-        # TODO: More thorough implemenation but requires more test cases.
-
-        # if str(data.schema_version) == verify_version:
-        #     if update_version:
-        #         data.schema_version = self.version
-        #     return True
-
-        # raise ValueError(f"{data.schema_version} != {verify_version}")
