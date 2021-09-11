@@ -9,7 +9,7 @@ from .base_model import BaseDictModel, BaseModel
 
 # 0.2.0 : from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)
-VERSION = SchemaVersion("v0.1.2")
+VERSION = SchemaVersion("v0.1.2-rc1")
 
 # #### Data types
 
