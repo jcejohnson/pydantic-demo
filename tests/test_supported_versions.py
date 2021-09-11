@@ -1,3 +1,11 @@
+"""
+The point of this test is to ensure that every supported version is implemented
+exactly once and that every implementation module's VERSION is in the list of
+supported versions.
+
+TL;DR - We do all the things and don't do anything useless.
+"""
+
 import importlib
 import inspect
 import os
