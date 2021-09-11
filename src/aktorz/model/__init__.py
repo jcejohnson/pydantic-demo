@@ -1,3 +1,4 @@
+from .base_model import BaseModel
 from .loader import Loader
 from .schema_version import SCHEMA_VERSION_REGEX, SchemaVersion, SemVer
-from .versions import CURRENT_VERSION, SUPPORTED_VERSIONS
+from .supported_versions import CURRENT_VERSION, SUPPORTED_VERSIONS
