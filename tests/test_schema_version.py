@@ -2,12 +2,17 @@
 import pytest
 from pydantic import BaseModel as PydanticBaseModel
 from aktorz.model.base_model import BaseModel
-from aktorz.model.schema_version import SchemaVersion, _json_dumps
+from aktorz.model.schema_version import SchemaVersion  # , _json_dumps
 
 
-class Thing(BaseModel):
+class VersionedThing(BaseModel):
     version: SchemaVersion
     name: str
+
+    def dict(self, *args, **kwargs):
+        result = super().dict(*args, **kwargs)
+        result['version'] = str(self.version)
+        return result
 
 
 class Foo:
@@ -25,14 +30,14 @@ class TestSchemaVersion:
         assert str(Foo()) == 'v3.4.5'
         # assert _json_dumps(Foo()) == 'v3.4.5'
 
-        thing = Thing(version=SchemaVersion('v1.2.3'), name='Thing One')
+        thing = VersionedThing(version=SchemaVersion('v1.2.3'), name='VersionedThing One')
 
         assert str(thing.version) == 'v1.2.3'
         # assert _json_dumps(thing.version) == 'v1.2.3'
 
-        assert str(thing) == "version=v1.2.3 name='Thing One'"
+        assert str(thing) == "version=v1.2.3 name='VersionedThing One'"
 
-        assert thing.version.json() == '{"version": "v1.2.3", "name": "Thing One"}'
+        assert thing.json() == '{"version": "v1.2.3", "name": "VersionedThing One"}'
 
         return
 
@@ -48,7 +53,7 @@ class TestSchemaVersion:
 
         # pydantic cannot coerce a string into a SchemaVersion
         with pytest.raises(ValueError) as exc_info:
-            Thing(version='v1.2.3', name='Thing One')
+            VersionedThing(version='v1.2.3', name='VersionedThing One')
         assert str(exc_info.value).endswith("value is not a valid dict (type=type_error.dict)")
 
         thing = thing

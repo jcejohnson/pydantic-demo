@@ -25,34 +25,34 @@ def get_parts(schema_version: str, default_prefix: str = DEFAULT_PREFIX):
     return {"prefix": prefix, "semver": semver}
 
 
-class XSemVer(Version):
-    def __init__(self, version, **kwargs):
-        if isinstance(version, str):
-            super().__init__(**Version.parse(version).to_dict())
-        else:
-            super().__init__(version, **kwargs)
+# class SemVer(Version):
+#     def __init__(self, version, **kwargs):
+#         if isinstance(version, str):
+#             super().__init__(**Version.parse(version).to_dict())
+#         else:
+#             super().__init__(version, **kwargs)
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+#     @classmethod
+#     def __get_validators__(cls):
+#         yield cls.validate
 
-    @classmethod
-    def validate(cls, v):
-        return v
-
-
-ComplexVersion = ForwardRef("ComplexVersion")
+#     @classmethod
+#     def validate(cls, v):
+#         return v
 
 
-def _json_dumps(obj, **kwargs):
-    raise Exception(obj)
-    return str(obj)
+SchemaVersion = ForwardRef("SchemaVersion")
 
 
-class ComplexVersion(BaseModel):
+# def _json_dumps(obj, **kwargs):
+#     raise Exception(obj)
+#     return str(obj)
+
+
+class SchemaVersion(BaseModel):
     """Make semver.Version compatible with pydantic.
 
-    ComplexVersion instances are not required to (but may) be compatible if:
+    SchemaVersion instances are not required to (but may) be compatible if:
     - thier prefixes are not identical
     - their major values (minor if major is zero) are not identical
 
@@ -84,30 +84,30 @@ class ComplexVersion(BaseModel):
         assert isinstance(self.prefix, str)
         assert isinstance(self.semver, str)
 
-    def __eq__(self, other: ComplexVersion):
-        if not isinstance(other, ComplexVersion):
-            other = ComplexVersion(other)
+    def __eq__(self, other: SchemaVersion):
+        if not isinstance(other, SchemaVersion):
+            other = SchemaVersion(other)
         return self.prefix == other.prefix and self.semver == other.semver
 
     def __repr__(self) -> str:
-        """So that BaseModels using us will get our string representation."""
+        """So that BaseModels' using us will get our string representation during their str()."""
         return self.__str__()
 
     def __str__(self) -> str:
         return f"{self.prefix}{self.semver}"
 
-    @classmethod
-    def _get_value(cls, v: Any, **kwargs):
-        print(f"----- [{v}]")
-        return v.__str__() if v != None else None
+    # @classmethod
+    # def _get_value(cls, v: Any, **kwargs):
+    #     print(f"----- [{v}] {kwargs}")
+    #     return v.__str__() if v != None else None
 
-    def can_read(self, other: Union[ComplexVersion, str]):
-        """This ComplexVersion can read data of other's version if:
+    def can_read(self, other: Union[SchemaVersion, str]):
+        """This SchemaVersion can read data of other's version if:
         - prefixes are identical
         - major values are identical (minor values if major is zero)
         """
         if isinstance(other, str):
-            other = ComplexVersion(other)
+            other = SchemaVersion(other)
         if self.prefix != other.prefix:
             return False
         if self.semver.major != other.semver.major:
@@ -116,21 +116,21 @@ class ComplexVersion(BaseModel):
             return False
         return True
 
-    def can_write(self, other: Union[ComplexVersion, str]):
-        """This ComplexVersion can write data of other's version if:
+    def can_write(self, other: Union[SchemaVersion, str]):
+        """This SchemaVersion can write data of other's version if:
         - can_read
         - other.semver <= self.semver
         """
         if isinstance(other, str):
-            other = ComplexVersion(other)
+            other = SchemaVersion(other)
         if not self.can_read(other):
             return False
         if other.semver > self.semver:
             return False
         return True
 
-    class Config:
-        json_dumps = _json_dumps
+    # class Config:
+    #     json_dumps = _json_dumps
 
 
-ComplexVersion.update_forward_refs()
+SchemaVersion.update_forward_refs()
