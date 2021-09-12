@@ -1,4 +1,5 @@
 import json
+import os
 import warnings
 
 import pytest
@@ -6,6 +7,10 @@ from pydantic import FilePath, ValidationError
 
 from aktorz.model.loader import Loader
 from aktorz.model.schema_version import SchemaVersion, SemVer
+
+
+class ExpectedWarning(Warning):
+    pass
 
 
 class BaseTest:
@@ -20,6 +25,19 @@ class BaseTest:
     # Our raw test data.
     _actor_data_dict: dict = {}
     _actor_data_json: str = ""
+
+    # Setup (and tear down)
+
+    @classmethod
+    def setup_class(cls):
+        # This doesn't work.
+        # warnings.filterwarnings('ignore', category=ExpectedWarning)
+        pass
+
+    def setup_method(self, test_method):
+        # Suppress the expected warnings when running under tox.
+        if os.environ.get('TOX_ACTIVE', 'false').upper() == 'TRUE':
+            warnings.filterwarnings('ignore', category=ExpectedWarning)
 
     # Tests common to all versions
 
@@ -100,7 +118,8 @@ class BaseTest:
         if self.__class__.VERSION == v0_1_0.VERSION:
             warnings.warn(
                 f"Not going to validate that [{self.__class__.VERSION}] is loadable by its own Model. "
-                f"Skipping [{request.node.name}]."
+                f"Skipping [{request.node.name}].",
+                ExpectedWarning
             )
             return
 
@@ -122,7 +141,8 @@ class BaseTest:
         if self.__class__.VERSION == v0_1_0.VERSION:
             warnings.warn(
                 f"Not going to validate that [{self.__class__.VERSION}] is exportable by its own Model. "
-                f"Skipping [{request.node.name}]."
+                f"Skipping [{request.node.name}].",
+                ExpectedWarning
             )
             return
 
