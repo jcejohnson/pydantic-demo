@@ -1,10 +1,11 @@
 from pathlib import PosixPath
+from typing import Any, cast
 
 import pytest
 from pydantic import FilePath, ValidationError
 
-from aktorz.model.loader import Loader  # type: ignore
-from aktorz.model.v0_1_1 import VERSION  # type: ignore
+from aktorz.model.loader import Loader
+from aktorz.model.v0_1_1 import VERSION
 
 from .base_test import BaseTest
 
@@ -58,7 +59,12 @@ class Test_0_1_1(BaseTest):  # noqa: N801
 
         loader = Loader(version=VERSION)
 
-        model = loader.load(input=actor_data_path)
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        model = cast(Any, loader.load(input=actor_data_path))
+
         # The Data:
         #    "dominic_toretto": {
         #      "actor": "vin_diesel",
@@ -138,7 +144,11 @@ class Test_0_1_1(BaseTest):  # noqa: N801
         Verify that loader.foo() and module.foo() and Foo() all behave identically.
         """
 
-        loader = Loader(version=self.__class__.VERSION)
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        loader = cast(Any, Loader(version=self.__class__.VERSION))
 
         module = loader.module()  # aktorz.model.v0_1_1
         assert module.Model == loader.model()

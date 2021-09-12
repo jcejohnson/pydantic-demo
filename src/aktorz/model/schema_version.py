@@ -1,3 +1,8 @@
+"""
+This module provides extended semver support which allows for prefixed
+versions.
+"""
+
 import re
 from typing import Union, cast
 
@@ -19,6 +24,11 @@ SCHEMA_VERSION_REGEX = re.compile(
 
 
 class SemVer(Version):
+    """
+    A subclass of semver.VersionInfo providing pydantic compatibility.
+
+    Added in 0.1.2
+    """
 
     NONE = Version(0, 0, 0)
 
@@ -46,12 +56,16 @@ class SemVer(Version):
         return v
 
 
-# I had to jump through some hoops to make mypy happy but the end result
-# of separating data (SchemaVersionBase) and behavior (SchemaVersion)
-# was worth the effort.
-
-
 class SchemaVersionBase(BaseModel):
+    """
+    A subclass of BaseModel containing version prefix and semver properties.
+
+    The properties and validator were originally a part of SchemaVersion but
+    issues with mypy forced these to be extracted into SchemaVersionBase.
+    This separation of concerns (data vs behavior) is actually a good thing.
+
+    Added in v0.1.2
+    """
 
     prefix: str = DEFAULT_PREFIX
     semver: SemVer = SemVer.NONE
@@ -59,19 +73,29 @@ class SchemaVersionBase(BaseModel):
     @validator("semver")
     @classmethod
     def validate_version(cls, v: str):
+        """
+        This validator ensures that the semver property will always be a
+        SemVer instance.
+        """
         if not Version.isvalid(v):
             raise ValueError(f"[{v}] is not a valid semver.")
         return str(Version.parse(v))
 
 
 class SchemaVersion(SchemaVersionBase):
-    """Make semver.Version compatible with pydantic.
+    """
+    Extemds SchemaVersionBase to provide semver-like functionality.
+
+    Providers operators: = != > >= <= <
 
     SchemaVersion instances are not required to (but may) be compatible if:
     - thier prefixes are not identical
     - their major values (minor if major is zero) are not identical
 
     See also: can_read() and can_write()
+
+    v0.1.0 : SchemaVersion(BaseModel)
+    v0.1.2 : SchemaVersion(SchemaVersionBase)
     """
 
     def __init__(self, *args, **kwargs):
@@ -92,12 +116,17 @@ class SchemaVersion(SchemaVersionBase):
         assert isinstance(self.semver, SemVer)
 
     @classmethod
-    def create(cls, v: str):
+    def create(cls, v: Union[SchemaVersionBase, str]):
+        """Create a SchemaVersion from either SchemaVersionBase or str."""
         return cls.parse_obj(cls.get_parts(schema_version=v))
 
     @classmethod
-    def get_parts(cls, schema_version: str, default_prefix: str = DEFAULT_PREFIX):
-        parts = SCHEMA_VERSION_REGEX.match(schema_version).groupdict()  # type: ignore
+    def get_parts(cls, schema_version: Union[SchemaVersionBase, str], default_prefix: str = DEFAULT_PREFIX):
+        """Return a dict containing the prefix and semver of a SchemaVersionBase or str."""
+        if isinstance(schema_version, SchemaVersionBase):
+            return {"prefix": schema_version.prefix, "semver": schema_version.semver}
+        match = SCHEMA_VERSION_REGEX.match(str(schema_version))
+        parts = match.groupdict()  # type: ignore
         prefix = parts["prefix"] or default_prefix
         semver = parts["semver"] or schema_version
         return {"prefix": prefix, "semver": semver}
@@ -106,6 +135,11 @@ class SchemaVersion(SchemaVersionBase):
         # if not isinstance(other, SchemaVersion):
         #     other = SchemaVersion(other)
         return self.prefix == other.prefix and self.semver == other.semver
+
+    def __ne__(self, other):
+        # if not isinstance(other, SchemaVersion):
+        #     other = SchemaVersion(other)
+        return not self.__eq__(other)
 
     def __ge__(self, other):
         # if not isinstance(other, SchemaVersion):
@@ -136,11 +170,11 @@ class SchemaVersion(SchemaVersionBase):
 
     # @classmethod
     # def _get_value(cls, v: Any, **kwargs):
-    #     print(f"----- [{v}] {kwargs}")
     #     return v.__str__() if v != None else None
 
     def can_read(self, other: Union[SchemaVersionBase, str]):
-        """This SchemaVersion can read data of other's version if:
+        """
+        This SchemaVersion can read data of other's version if:
         - prefixes are identical
         - major values are identical (minor values if major is zero)
         """
@@ -156,7 +190,8 @@ class SchemaVersion(SchemaVersionBase):
         return True
 
     def can_write(self, other: Union[SchemaVersionBase, str]):
-        """This SchemaVersion can write data of other's version if:
+        """
+        This SchemaVersion can write data of other's version if:
         - can_read
         - other.semver <= self.semver
         """

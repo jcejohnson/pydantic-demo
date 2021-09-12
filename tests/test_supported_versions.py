@@ -16,8 +16,8 @@ from typing import Dict
 import pytest
 from parameterized import parameterized  # type: ignore
 
-from aktorz.model import BaseModel, loader, schema_version  # type: ignore
-from aktorz.model.supported_versions import SUPPORTED_VERSIONS  # type: ignore
+from aktorz.model import BaseModel, loader, schema_version
+from aktorz.model.supported_versions import SUPPORTED_VERSIONS
 
 AKTORZ_MODEL_PATH: str = os.path.dirname(inspect.getfile(loader))
 VERSION_MODULES_BY_NAME: Dict[str, ModuleType] = dict()
@@ -92,7 +92,7 @@ class TestSupportedVersions:
 
     def test_aktorz_model_path(self, aktorz_model_path: str):
         """Verify that the filesystem path is valid."""
-        assert aktorz_model_path.endswith(os.path.join("src", "aktorz", "model"))
+        assert aktorz_model_path.endswith(os.path.join("aktorz", "model"))
         assert os.path.isdir(aktorz_model_path)
 
     def test_has_version_modules(self, version_modules_by_name: Dict[str, ModuleType]):

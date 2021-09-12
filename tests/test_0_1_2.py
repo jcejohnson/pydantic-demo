@@ -1,12 +1,13 @@
 import json
 import os
 from pathlib import PosixPath
+from typing import Any, cast
 
 import pytest
 from pydantic import FilePath, ValidationError
 
-from aktorz.model import Loader  # type: ignore
-from aktorz.model.v0_1_2 import VERSION  # type: ignore
+from aktorz.model import Loader
+from aktorz.model.v0_1_2 import VERSION
 
 from .base_test import BaseTest
 
@@ -78,7 +79,12 @@ class Test_0_1_2(BaseTest):  # noqa: N801
 
         schema_version = self.__class__.VERSION
         loader = Loader(version=schema_version)
-        model = loader.load(input=actor_data_json)
+
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        model = cast(Any, loader.load(input=actor_data_json))
 
         assert model.schema_version == schema_version
         assert isinstance(model.schema_version, str)
@@ -96,7 +102,12 @@ class Test_0_1_2(BaseTest):  # noqa: N801
 
         loader = Loader(version=VERSION)
 
-        model = loader.load(input=actor_data_path)
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        model = cast(Any, loader.load(input=actor_data_path))
+
         # The Data:
         #    "dominic_toretto": {
         #      "actor": "vin_diesel",
@@ -178,7 +189,11 @@ class Test_0_1_2(BaseTest):  # noqa: N801
 
         loader = Loader(version=self.__class__.VERSION)
 
-        module = loader.module()  # aktorz.model.v0_1_2
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        module = cast(Any, loader.module())  # aktorz.model.v0_1_2
         assert module.Model == loader.model()
         assert module.Exporter == loader.exporter()
 

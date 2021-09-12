@@ -4,8 +4,8 @@ import warnings
 import pytest
 from pydantic import FilePath, ValidationError
 
-from aktorz.model.loader import Loader  # type: ignore
-from aktorz.model.schema_version import SchemaVersion, SemVer  # type: ignore
+from aktorz.model.loader import Loader
+from aktorz.model.schema_version import SchemaVersion, SemVer
 
 
 class BaseTest:

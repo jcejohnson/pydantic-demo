@@ -3,7 +3,8 @@ from typing import Any, Dict, List, NewType, Optional, Tuple, Union
 
 from pydantic import conint, constr, validator
 
-from .base_model import BaseDictModel, BaseExporter, BaseModel
+from .base_model import BaseDictModel, BaseModel
+from .exporter import BaseExporter
 
 # #### Constants
 

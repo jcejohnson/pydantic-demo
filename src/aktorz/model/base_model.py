@@ -1,3 +1,18 @@
+"""
+This Module provides enhanced pydantic BaseModel classes.
+
+BaseModel
+
+    Extends pydantic.BaseModel to add dict-like behavior and a Config class
+    forbidding extra properties.
+
+BaseDictModel
+
+    Extends BaseModel specifically for classes having a __root_ property.
+    Modifies dict-like behavior to delegate to __root_.
+
+See also: .base_models
+"""
 import copy
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -5,6 +20,14 @@ from pydantic import Extra
 
 
 class BaseModel(PydanticBaseModel):
+    """
+    Extends pydantic.BaseModel to add dict-like behavior and a Config class
+    forbidding extra properties.
+
+    Added in v0.1.0
+    """
+
+    # v0.1.0
     class Config:
         extra: str = Extra.forbid
 
@@ -12,12 +35,15 @@ class BaseModel(PydanticBaseModel):
     def __iter__(self):
         return iter(self.dict())
 
+    # v0.1.0
     def __getitem__(self, key):
         return getattr(self, key)
 
+    # v0.1.0
     def __setitem__(self, key, value):
         return setattr(self, key, value)
 
+    # v0.1.0
     def items(self):
         return self.dict().items()
 
@@ -29,6 +55,7 @@ class BaseModel(PydanticBaseModel):
     # def values(self):
     #     return self.dict().values()
 
+    # v0.1.0
     def pop(self, key):
         value = self[key]
         if hasattr(self, key):
@@ -36,8 +63,13 @@ class BaseModel(PydanticBaseModel):
         return value
 
 
-# Added in v0.1.2
 class BaseDictModel(BaseModel):
+    """
+    Extends BaseModel specifically for classes having a __root_ property.
+    Modifies dict-like behavior to delegate to __root_.
+
+    Added in v0.1.2
+    """
 
     # Not yet required.
     # def keys(self):
@@ -59,36 +91,14 @@ class BaseDictModel(BaseModel):
     # def __getattr__(self, item):
     #     return self.__root__[item]
 
+    # v0.1.2
     def __deepcopy__(self, memo):
         return copy.deepcopy(self.__root__)
 
+    # v0.1.2
     def __getitem__(self, item):
         return self.__root__[item]
 
+    # v0.1.2
     def __len__(self):
         return len(self.__root__)
-
-
-# Added in v0.1.2
-class BaseVersionedModel(BaseModel):
-    """
-    Provides a schema_version property and a custom dict() method that will
-    represent schema_version as a string.
-    """
-
-    # 0.1.2 : SchemaVersion
-    _schema_version_field: str = "schema_version"
-
-    # 0.1.2
-    def dict(self, *args, **kwargs):
-        result = super().dict(*args, **kwargs)
-        if not isinstance(result[self.__class__._schema_version_field], str):
-            result[self.__class__._schema_version_field] = str(self.schema_version)
-        return result
-
-
-# Added in v0.1.2
-
-
-class BaseExporter:
-    pass

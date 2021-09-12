@@ -1,3 +1,7 @@
+"""
+This module provides a Loader class to load data and create Models instances.
+"""
+
 import importlib
 from enum import Enum, auto
 from pathlib import PosixPath
@@ -7,7 +11,8 @@ from typing import Optional, Union, cast
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
-from .base_model import BaseExporter, BaseModel
+from .base_models import BaseVersionedModel
+from .exporter import BaseExporter
 from .schema_version import SchemaVersion
 
 
@@ -80,7 +85,7 @@ class Loader:
         input: Union[str, dict, FilePath],
         validate_version: Optional[Validations] = Validations.READABLE,
         update_version: Optional[bool] = True,
-    ) -> BaseModel:
+    ) -> BaseVersionedModel:
         """
         Create a Model instance from the input data.
 
@@ -154,7 +159,7 @@ class Loader:
         input: Union[str, dict, FilePath],
         validate_version: Optional[Validations] = Validations.READABLE,
         update_version: Optional[bool] = True,
-    ) -> BaseModel:
+    ) -> BaseVersionedModel:
 
         model = self.model()
 
@@ -180,7 +185,7 @@ class Loader:
 
         raise ValueError(f"Input schema version [{data.schema_version}] is invalid.")
 
-    def _make_compatible(self, data: BaseModel) -> BaseModel:
+    def _make_compatible(self, data: BaseVersionedModel) -> BaseVersionedModel:
         # Prior to version 0.2.x the Model's schema_version was a str
         # Dealing with this fundamental and significant type change is one of the
         # things we're figuring out how to do.
@@ -195,7 +200,9 @@ class Loader:
         data.schema_version = str(schema_version)  # type: ignore
         return data
 
-    def _validate_version(self, *, data: BaseModel, validate_version: Validations, update_version: bool) -> bool:
+    def _validate_version(
+        self, *, data: BaseVersionedModel, validate_version: Validations, update_version: bool
+    ) -> bool:
         """
         if validate_version == Validations.NONE and update_version
             data.schema_version = self.version (which is a SchemaVersion)

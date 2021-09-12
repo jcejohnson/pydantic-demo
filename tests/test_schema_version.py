@@ -1,8 +1,8 @@
 import pytest
 from semver import VersionInfo as Version  # type: ignore
 
-from aktorz.model.base_model import BaseModel  # type: ignore
-from aktorz.model.schema_version import SchemaVersion, SemVer  # type: ignore
+from aktorz.model.base_model import BaseModel
+from aktorz.model.schema_version import SchemaVersion, SemVer
 
 
 class VersionedThing(BaseModel):
