@@ -17,7 +17,7 @@ import pytest
 from parameterized import parameterized  # type: ignore
 
 from aktorz.model import BaseModel, loader, schema_version  # type: ignore
-from aktorz.model.supported_versions import SUPPORTED_VERSIONS
+from aktorz.model.supported_versions import SUPPORTED_VERSIONS  # type: ignore
 
 AKTORZ_MODEL_PATH: str = os.path.dirname(inspect.getfile(loader))
 VERSION_MODULES_BY_NAME: Dict[str, ModuleType] = dict()

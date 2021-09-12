@@ -1,8 +1,8 @@
-
 import pytest
-from pydantic import BaseModel as PydanticBaseModel
-from aktorz.model.base_model import BaseModel
-from aktorz.model.schema_version import SchemaVersion  # , _json_dumps
+from semver import VersionInfo as Version  # type: ignore
+
+from aktorz.model.base_model import BaseModel  # type: ignore
+from aktorz.model.schema_version import SchemaVersion, SemVer  # type: ignore
 
 
 class VersionedThing(BaseModel):
@@ -11,53 +11,77 @@ class VersionedThing(BaseModel):
 
     def dict(self, *args, **kwargs):
         result = super().dict(*args, **kwargs)
-        result['version'] = str(self.version)
+        result["version"] = str(self.version)
         return result
 
 
-class Foo:
-    prefix = 'v'
-    semver = '3.4.5'
-
-    def __str__(self):
-        return f"{self.prefix}{self.semver}"
-
-
 class TestSchemaVersion:
+    @pytest.fixture
+    def versioned_thing(self):
+        return VersionedThing(version=SchemaVersion(prefix="v", semver="1.2.3"), name="Thing One")
 
-    def test_to_json(self):
+    def test_construction(self, versioned_thing: VersionedThing):
+        # Redundant
+        assert VersionedThing(version=SchemaVersion(prefix="v", semver="1.2.3"), name="Thing One") == versioned_thing
 
-        assert str(Foo()) == 'v3.4.5'
-        # assert _json_dumps(Foo()) == 'v3.4.5'
+        assert VersionedThing(version=SchemaVersion(semver="1.2.3"), name="Thing One") == versioned_thing
 
-        thing = VersionedThing(version=SchemaVersion('v1.2.3'), name='VersionedThing One')
+        assert VersionedThing(version=SchemaVersion.create("v1.2.3"), name="Thing One") == versioned_thing
 
-        assert str(thing.version) == 'v1.2.3'
-        # assert _json_dumps(thing.version) == 'v1.2.3'
+        assert VersionedThing(version=SchemaVersion.create("1.2.3"), name="Thing One") == versioned_thing
 
-        assert str(thing) == "version=v1.2.3 name='VersionedThing One'"
+    def test_copy(self, versioned_thing: VersionedThing):
 
-        assert thing.json() == '{"version": "v1.2.3", "name": "VersionedThing One"}'
+        new_thing = versioned_thing.copy(deep=True)
+        assert new_thing == versioned_thing
 
-        return
+        new_thing.version.prefix = "x"
+        assert VersionedThing(version=SchemaVersion.create("x1.2.3"), name="Thing One") == new_thing
+        assert VersionedThing(version=SchemaVersion.create("1.2.3"), name="Thing One") != new_thing
 
-        schema_version = SchemaVersion(prefix='v', semver='1.2.3')
-        assert str(schema_version) == 'v1.2.3'
-        assert issubclass(schema_version.__class__, PydanticBaseModel)
-        assert isinstance(schema_version, BaseModel)
+    def test_to_str(self, versioned_thing: VersionedThing):
 
-        assert SchemaVersion('v1.2.3') == schema_version
+        assert str(versioned_thing.version) == "v1.2.3"
+        assert str(versioned_thing.version.prefix) == "v"
+        assert str(versioned_thing.version.semver) == "1.2.3"
+        assert str(versioned_thing) == "version=v1.2.3 name='Thing One'"
 
-        json = schema_version.json()
-        assert json == '{"prefix": "v", "semver": "1.2.3"}'
+    def test_can_compare(self, versioned_thing: VersionedThing):
+
+        assert versioned_thing.version.semver == Version(1, minor=2, patch=3)
+        assert versioned_thing.version.semver >= Version(1, minor=2, patch=3)
+        assert versioned_thing.version.semver <= Version(1, minor=2, patch=3)
+
+        assert Version(1, minor=2, patch=3) == versioned_thing.version.semver
+        assert Version(1, minor=2, patch=3) >= versioned_thing.version.semver
+        assert Version(1, minor=2, patch=3) <= versioned_thing.version.semver
+
+    def test_to_dict(self, versioned_thing: VersionedThing):
+
+        assert isinstance(versioned_thing.version, SchemaVersion)
+
+        data = versioned_thing.dict()
+        assert data == {"version": "v1.2.3", "name": "Thing One"}
+
+        # Verify that SchemaVersion's dict() method isn't mangling the actual version property.
+        assert isinstance(versioned_thing.version, SchemaVersion)
+        assert isinstance(versioned_thing.version.prefix, str)
+        assert isinstance(versioned_thing.version.semver, SemVer)
+
+        assert isinstance(data["version"], str)
+
+    def test_to_json(self, versioned_thing: VersionedThing):
+
+        assert versioned_thing.json() == '{"version": "v1.2.3", "name": "Thing One"}'
+
+        # Verify that SchemaVersion's json() method isn't mangling the actual version property.
+        assert isinstance(versioned_thing.version, SchemaVersion)
+        assert isinstance(versioned_thing.version.prefix, str)
+        assert isinstance(versioned_thing.version.semver, SemVer)
+
+    def test_coercion(self):
 
         # pydantic cannot coerce a string into a SchemaVersion
         with pytest.raises(ValueError) as exc_info:
-            VersionedThing(version='v1.2.3', name='VersionedThing One')
+            VersionedThing(version="v1.2.3", name="VersionedThing One")
         assert str(exc_info.value).endswith("value is not a valid dict (type=type_error.dict)")
-
-        thing = thing
-        assert thing.version == schema_version
-
-        json = thing.json()
-        assert json == ''

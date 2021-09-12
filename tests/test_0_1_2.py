@@ -46,14 +46,15 @@ def teardown_module(module):
     os.remove(basename + ".c.json")
 
 
-class TestSchemaVersionMajor0Minor1Patch2(BaseTest):
+class Test_0_1_2(BaseTest):  # noqa: N801
     """Schema Version 0.1.2 tests."""
 
     # Class constants required by BaseTest
 
     MODEL_MODULE = "aktorz.model.v0_1_2"
     TEST_FILE = "actor-data-0.1.2.json"
-    VERSION = "v0.1.2"
+    VERSION = "v0.1.2-rc1"
+
     # Tests...
 
     # Every concrete test class needs this test to ensure that we don't
@@ -68,6 +69,25 @@ class TestSchemaVersionMajor0Minor1Patch2(BaseTest):
         assert test_file_basename == self.__class__.TEST_FILE
 
         assert VERSION == self.__class__.VERSION
+
+    def test_basic_data(self, actor_data_json: str, test_data_dict: dict):
+        """
+        Test loading of v0.1.0 data from a json string into the model.
+        Some concrete test classes will (and some will not) have have a similar test.
+        """
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+        model = loader.load(input=actor_data_json)
+
+        assert model.schema_version == schema_version
+        assert isinstance(model.schema_version, str)
+
+        # In v0.1.2 model.actors becomes an ActorsById instance
+        # which is dict-like and responds to len()
+        assert len(model.actors) == 2
+
+        assert model.actors["charlie_chaplin"].birth_year == 1889
 
     def test_character_full_name(self, request, actor_data_path: FilePath):
         """Verify that cast character name is handled properly"""
@@ -151,22 +171,6 @@ class TestSchemaVersionMajor0Minor1Patch2(BaseTest):
         self.verify_exception(request, exc_info, "c")
         assert exc_info.value.errors()[-1]["msg"] == "Either `name` or `first/last_name` must be provided."
 
-    def test_load_0_1_0(self, resource_path_root):
-        """
-        Verify that our v0.1.2 model will load a v0.1.0 document.
-        """
-
-        # Fetch our v0.1.2 loader
-        loader = Loader(version=self.__class__.VERSION)
-
-        # Construct the v0.1.0 test file path
-        from .test_0_1_0 import TestSchemaVersionMajor0Minor1Patch0 as v0_1_0  # noqa:  N814
-
-        input = resource_path_root / v0_1_0.TEST_FILE
-
-        # Load it
-        loader.load(input=input, verify_version=v0_1_0.VERSION)
-
     def test_loader_module_and_ctors(self, actor_data_dict: str):
         """
         Verify that loader.foo() and module.foo() and Foo() all behave identically.
@@ -190,40 +194,6 @@ class TestSchemaVersionMajor0Minor1Patch2(BaseTest):
         assert Exporter(**eargs) == module.exporter(**eargs)
         assert Exporter(**eargs) == loader.exporter()(**eargs)
         assert Exporter(**eargs) == loader.export(**eargs)
-
-    def test_loadable_by_0_1_0(self, request, actor_data_dict: str):
-        """
-        Attempting to load v0.1.2 data with some of the new optional properties set
-        into a v0.1.0 model should fail.
-        """
-
-        schema_version = self.__class__.VERSION
-        loader = Loader(version=schema_version)
-
-        model = loader.load(input=actor_data_dict)
-        json = model.json()
-
-        from .test_0_1_0 import TestSchemaVersionMajor0Minor1Patch0 as v0_1_0  # noqa:  N814
-
-        old_loader = Loader(version=v0_1_0.VERSION)
-        with pytest.raises(ValidationError) as exc_info:
-            old_model = old_loader.load(input=json)
-
-        self.verify_exception(request, exc_info)
-
-        # Get an aktorz.model.v0_1_2.Exporter instance
-        # capable of exporting `data` in v0.1.0 format.
-        exporter = loader.module().exporter(model=model, version=v0_1_0.VERSION)
-        assert exporter.__module__ == "aktorz.model.v0_1_2"
-        assert exporter.__class__.__name__ == "Exporter"
-
-        # Export it as a dict
-        data = exporter.dict()
-        assert isinstance(data, dict)
-
-        # Load it with the v0.1.0 loader
-        old_model = old_loader.load(input=data)
-        assert old_model.schema_version == v0_1_0.VERSION
 
     # Define expected pydantic errors keyed by test name and optional qualifiers.
     # This helps reduce the noise level of each test and makes it easier to reuse

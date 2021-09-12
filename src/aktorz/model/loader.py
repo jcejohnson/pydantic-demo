@@ -2,7 +2,7 @@ import importlib
 from enum import Enum, auto
 from pathlib import PosixPath
 from types import ModuleType
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
@@ -39,6 +39,7 @@ class Loader:
     def export(self, *args, **kwargs) -> BaseExporter:
         """
         Construct and return an Exporter for the model.
+        Raises AttributeError if there is no Exporter for the version.
 
         export() is intended as a convenience method when you want a one-use Exporter.
         It'll save you a little typing, but not much.
@@ -52,9 +53,11 @@ class Loader:
         """
         return self.exporter()(*args, **kwargs)
 
-    def exporter(self):
+    def exporter(self, return_none_if_missing: Optional[bool] = False):
         """
         Get the Exporter class which implements the schema version provided to Loader().
+        Raises AttributeError if there is no Exporter for the version.
+        See also: has_exporter()
 
         loader = Loader(...)
         Exporter = loader.exporter()
@@ -62,7 +65,13 @@ class Loader:
 
         """
         module = self.module()
+        if return_none_if_missing and not hasattr(module, "Exporter"):
+            return None
         return getattr(module, "Exporter")
+
+    def has_exporter(self):
+        module = self.module()
+        return hasattr(module, "Exporter")
 
     @validate_arguments
     def load(
@@ -98,6 +107,7 @@ class Loader:
     def model(self):
         """
         Get the Model class which implements the schema version provided to Loader().
+        See also: has_exporter()
 
         loader = Loader(...)
         Model = loader.model()
@@ -120,14 +130,30 @@ class Loader:
         exporter = Exporter(model=model, version=...)
         old_data = exporter.dict()
         """
-        version = str(self.version.semver).replace(".", "_")
-        module = importlib.import_module(f".{self.version.prefix}{version}", package=__package__)
+
+        schema_version = cast(SchemaVersion, self.version)
+        version = str(schema_version.semver).replace(".", "_")
+        try:
+            module = importlib.import_module(f".{schema_version.prefix}{version}", package=__package__)
+        except ModuleNotFoundError as e1:
+            final_version = str(schema_version.semver.finalize_version()).replace(".", "_")
+            if final_version == version:
+                raise e1
+            try:
+                module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=__package__)
+            except ModuleNotFoundError as e2:
+                raise ModuleNotFoundError(f"{e1} / {e2}")
+
         return module
 
     # #### Implementation details
 
     def _load(
-        self, *, input: Union[str, dict, FilePath], validate_version: Validations, update_version: bool
+        self,
+        *,
+        input: Union[str, dict, FilePath],
+        validate_version: Optional[Validations] = Validations.READABLE,
+        update_version: Optional[bool] = True,
     ) -> BaseModel:
 
         model = self.model()
@@ -147,12 +173,33 @@ class Loader:
             # TODO: Create a test case for this.
             raise TypeError(f"Unexpected input type {input.__class__}")
 
-        if self._validate_version(data=data, validate_version=validate_version, update_version=update_version):
-            return data
+        if self._validate_version(
+            data=data, validate_version=cast(Validations, validate_version), update_version=cast(bool, update_version)
+        ):
+            return self._make_compatible(data)
 
         raise ValueError(f"Input schema version [{data.schema_version}] is invalid.")
 
+    def _make_compatible(self, data: BaseModel) -> BaseModel:
+        # Prior to version 0.2.x the Model's schema_version was a str
+        # Dealing with this fundamental and significant type change is one of the
+        # things we're figuring out how to do.
+
+        schema_version = data.schema_version  # type: ignore
+        if not isinstance(schema_version, SchemaVersion):
+            data = SchemaVersion.create(schema_version)
+
+        if schema_version >= SchemaVersion(prefix=schema_version.prefix, semver="0.2.0"):
+            return data
+
+        data.schema_version = str(schema_version)  # type: ignore
+        return data
+
     def _validate_version(self, *, data: BaseModel, validate_version: Validations, update_version: bool) -> bool:
+        """
+        if validate_version == Validations.NONE and update_version
+            data.schema_version = self.version (which is a SchemaVersion)
+        """
 
         # Note: validate_version() ensures that self.version is always a SchemaVersion()
         assert isinstance(self.version, SchemaVersion)
@@ -161,14 +208,15 @@ class Loader:
         if validate_version == Validations.NONE:
             return True
 
-        data_version = data.schema_version if isinstance(
-            data.schema_version, SchemaVersion) else SchemaVersion(data.schema_version)
+        schema_version = data.schema_version  # type: ignore
+
+        data_version = (
+            schema_version if isinstance(schema_version, SchemaVersion) else SchemaVersion.create(schema_version)
+        )
 
         if validate_version == Validations.IDENTICAL:
             if self.version != data_version:
-                raise ValueError(
-                    f"Input of version [{data_version}] does not match Model version [{self.version}]."
-                )
+                raise ValueError(f"Input of version [{data_version}] does not match Model version [{self.version}].")
 
         if validate_version == Validations.READABLE:
             if not self.version.can_read(data_version):
@@ -182,6 +230,6 @@ class Loader:
                     f"Input of version [{data_version}] cannot be written by Model version [{self.version}]."
                 )
 
-        data.schema_version = self.version if update_version else data_version
+        data.schema_version = self.version if update_version else data_version  # type: ignore
 
         return True

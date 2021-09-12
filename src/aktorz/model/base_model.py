@@ -59,13 +59,36 @@ class BaseDictModel(BaseModel):
     # def __getattr__(self, item):
     #     return self.__root__[item]
 
-    def __getitem__(self, item):
-        return self.__root__[item]
-
     def __deepcopy__(self, memo):
         return copy.deepcopy(self.__root__)
 
+    def __getitem__(self, item):
+        return self.__root__[item]
+
+    def __len__(self):
+        return len(self.__root__)
+
 
 # Added in v0.1.2
+class BaseVersionedModel(BaseModel):
+    """
+    Provides a schema_version property and a custom dict() method that will
+    represent schema_version as a string.
+    """
+
+    # 0.1.2 : SchemaVersion
+    _schema_version_field: str = "schema_version"
+
+    # 0.1.2
+    def dict(self, *args, **kwargs):
+        result = super().dict(*args, **kwargs)
+        if not isinstance(result[self.__class__._schema_version_field], str):
+            result[self.__class__._schema_version_field] = str(self.schema_version)
+        return result
+
+
+# Added in v0.1.2
+
+
 class BaseExporter:
     pass
