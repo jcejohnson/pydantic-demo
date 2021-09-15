@@ -14,7 +14,6 @@ from types import ModuleType
 from typing import Dict
 
 import pytest
-from parameterized import parameterized  # type: ignore
 
 from aktorz.model import BaseModel, loader, schema_version
 from aktorz.model.supported_versions import SUPPORTED_VERSIONS
@@ -99,7 +98,10 @@ class TestSupportedVersions:
         """Verify that we found at least one module providing a Model."""
         assert version_modules_by_name, "Failed to locate any version modules."
 
-    @parameterized.expand([(name, module) for name, module in get_version_modules_by_name().items()])
+    @pytest.mark.parametrize(
+        "name, module",
+        [(name, module) for name, module in get_version_modules_by_name().items()]
+    )
     def test_version_module_validity(self, name, module):
         """All version modules must contain a Model with specific characteristics:
         - version modules must contain a Model
@@ -118,8 +120,9 @@ class TestSupportedVersions:
         assert hasattr(module, "VERSION"), f"Version module [{name}] is missing [VERSION]"
         assert str(getattr(module, "VERSION")), f"Version module [{name}] has falsy [VERSION]"
 
-    @parameterized.expand(
-        [(name, module, get_version_modules_by_version()) for name, module, in get_version_modules_by_name().items()]
+    @pytest.mark.parametrize(
+        "name, module",
+        [(name, module) for name, module in get_version_modules_by_name().items()]
     )
     def test_only_one_implementation_per_version(
         self, name, module, version_modules_by_version: Dict[str, ModuleType]
@@ -136,7 +139,10 @@ class TestSupportedVersions:
             f"provided by [{version_modules_by_version[version].__name__}]"
         )
 
-    @parameterized.expand([(version, module) for version, module, in get_version_modules_by_version().items()])
+    @pytest.mark.parametrize(
+        "version, module",
+        [(version, module) for version, module in get_version_modules_by_version().items()]
+    )
     def test_every_implementation_is_useful(self, version, module):
         """Veryfy that every version implmentation module is implementing a supported version.
         Any modules that are not implementing supported versions are unnecessary and should be deleted.
@@ -146,7 +152,10 @@ class TestSupportedVersions:
             version in SUPPORTED_VERSIONS
         ), f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
 
-    @parameterized.expand([(version, get_version_modules_by_version()) for version in SUPPORTED_VERSIONS])
+    @pytest.mark.parametrize(
+        "version",
+        [(version) for version in get_version_modules_by_version()]
+    )
     def test_every_version_is_implemented(self, version, version_modules_by_version):
         """Verify that every supported version has an implementation module."""
 
