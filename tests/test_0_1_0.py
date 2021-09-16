@@ -3,7 +3,6 @@ import copy
 import pytest
 from pydantic import FilePath
 
-
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
 from aktorz.model import Loader

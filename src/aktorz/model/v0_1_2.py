@@ -4,9 +4,14 @@ from typing import Any, Dict, List, NewType, Optional, Tuple, Union
 from pydantic import conint, constr, validator
 
 from .base_model import BaseDictModel, BaseModel
-from .exporter import BaseExporter
+
+
+class BaseExporter:
+    pass
+
 
 # #### Constants
+
 
 # 0.2.0 : from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)

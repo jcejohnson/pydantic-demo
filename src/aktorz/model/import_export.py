@@ -13,8 +13,11 @@ from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
 from .base_models import BaseVersionedModel
-from .exporter import BaseExporter
 from .schema_version import SchemaVersion
+
+
+class BaseExporter:
+    pass
 
 
 class LoaderValidations(Enum):
@@ -40,8 +43,7 @@ class ModuleType(BaseModuleType):
 
 @dataclass
 class ImportExport:
-    """Common behaviors for import (load) and Export (save).
-    """
+    """Common behaviors for import (load) and Export (save)."""
 
     version: Optional[Union[SchemaVersion, str]] = None
     module: ModuleType = None
@@ -71,7 +73,7 @@ class ImportExport:
         old_data = exporter.dict()
         """
 
-        schema_version = cast(SchemaVersion, values['version'])
+        schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
         try:
@@ -91,7 +93,7 @@ class ImportExport:
     @classmethod
     def validate_model(cls, model, values) -> BaseVersionedModel:
         """Get the Model class from the module."""
-        return getattr(cast(ModuleType, values['module']), "Model")
+        return getattr(cast(ModuleType, values["module"]), "Model")
 
 
 @dataclass
@@ -203,7 +205,7 @@ class Loader(ImportExport):
         if self._validate_version(
             data=data,
             validate_version=cast(LoaderValidations, validate_version),
-            update_version=cast(bool, update_version)
+            update_version=cast(bool, update_version),
         ):
             return self._make_compatible(data)
 
