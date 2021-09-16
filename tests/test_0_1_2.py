@@ -54,7 +54,7 @@ class Test_0_1_2(BaseTest):  # noqa: N801
 
     MODEL_MODULE = "aktorz.model.v0_1_2"
     TEST_FILE = "actor-data-0.1.2.json"
-    VERSION = "v0.1.2-rc1"
+    VERSION = "v0.1.2"
 
     # Tests...
 
