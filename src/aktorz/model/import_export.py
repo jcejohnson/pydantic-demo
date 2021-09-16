@@ -7,12 +7,12 @@ import importlib
 from enum import Enum, auto
 from pathlib import PosixPath
 from types import ModuleType as BaseModuleType
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union, cast
 
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
-from .base_models import BaseVersionedModel
+from .base_models import BaseModel, BaseVersionedModel
 from .schema_version import SchemaVersion
 
 
@@ -46,14 +46,14 @@ class ImportExport:
     """Common behaviors for import (load) and Export (save)."""
 
     version: Optional[Union[SchemaVersion, str]] = None
-    module: ModuleType = None
-    model: BaseVersionedModel = None
+    module: ModuleType = cast(ModuleType, None)
+    model: BaseVersionedModel = cast(BaseVersionedModel, None)
 
     @validator("version")
     @classmethod
     def validate_version(cls, v) -> SchemaVersion:
         if isinstance(v, str):
-            return SchemaVersion(v)
+            return SchemaVersion.create(v)
         return v
 
     @validator("module")
@@ -193,15 +193,16 @@ class Loader(ImportExport):
         assert input_type in [FilePath, PosixPath, dict, str]
 
         if input_type in [FilePath, PosixPath]:
-            data = self.model.parse_file(input)
+            data = cast(BaseModel, self.model).parse_file(input)  # type: ignore
         elif input_type is dict:
-            data = self.model.parse_obj(input)
+            data = cast(BaseModel, self.model).parse_obj(input)
         elif input_type is str:
-            data = self.model.parse_raw(input)
+            data = cast(BaseModel, self.model).parse_raw(input)  # type: ignore
         else:
             # TODO: Create a test case for this.
             raise TypeError(f"Unexpected input type {input.__class__}")
 
+        data = cast(BaseVersionedModel, data)
         if self._validate_version(
             data=data,
             validate_version=cast(LoaderValidations, validate_version),

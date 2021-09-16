@@ -3,7 +3,7 @@ from semver import VersionInfo as Version  # type: ignore
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
-from aktorz.model import BaseModel, Loader, SchemaVersion, SemVer
+from aktorz.model import BaseModel, SchemaVersion, SemVer
 
 
 class VersionedThing(BaseModel):

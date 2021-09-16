@@ -115,9 +115,9 @@ class SchemaVersion(SchemaVersionBase):
         assert isinstance(self.semver, SemVer)
 
     @classmethod
-    def create(cls, v: Union[SchemaVersionBase, str]):
+    def create(cls, version: Union[SchemaVersionBase, str]):
         """Create a SchemaVersion from either SchemaVersionBase or str."""
-        return cls.parse_obj(cls.get_parts(schema_version=v))
+        return cls.parse_obj(cls.get_parts(schema_version=version))
 
     @classmethod
     def get_parts(cls, schema_version: Union[SchemaVersionBase, str], default_prefix: str = DEFAULT_PREFIX):

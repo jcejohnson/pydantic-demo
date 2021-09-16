@@ -2,7 +2,6 @@
 Test that all modules can read and write the things they say they can.
 """
 
-import inspect
 import json
 import os
 
@@ -10,9 +9,9 @@ import pytest
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
-from aktorz.model import SUPPORTED_VERSIONS, BaseModel, Loader, LoaderValidations, SchemaVersion
+from aktorz.model import SUPPORTED_VERSIONS, Loader, LoaderValidations, SchemaVersion
 
-from .base_test import BaseTest, ExpectedWarning
+from .base_test import BaseTest
 from .version_modules import CONFIG_DATA
 
 """
