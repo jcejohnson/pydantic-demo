@@ -6,10 +6,10 @@ from pydantic import FilePath
 from aktorz.model import Loader
 from aktorz.model.v0_1_0 import VERSION
 
-from .base_test import BaseTest
+from .base_test import BaseVersionModuleTest
 
 
-class Test_0_1_0(BaseTest):  # noqa: N801
+class Test_0_1_0(BaseVersionModuleTest):  # noqa: N801
     """Schema Version 0.1.0 tests."""
 
     # Class constants required by BaseTest

@@ -132,34 +132,28 @@ class SchemaVersion(SchemaVersionBase):
         return {"prefix": prefix, "semver": semver}
 
     def __eq__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
+        if not isinstance(other, SchemaVersion):
+            other = SchemaVersion(other)
         return self.prefix == other.prefix and self.semver == other.semver
 
+    def __gt__(self, other):
+        if not isinstance(other, SchemaVersion):
+            other = SchemaVersion(other)
+        return self.prefix == other.prefix and self.semver >= other.semver
+
+    def __lt__(self, other):
+        if not isinstance(other, SchemaVersion):
+            other = SchemaVersion(other)
+        return self.prefix == other.prefix and self.semver < other.semver
+
     def __ne__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
         return not self.__eq__(other)
 
     def __ge__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
         return self == other or self > other
 
-    def __gt__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
-        return self.prefix == other.prefix and self.semver >= other.semver
-
     def __le__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
         return self == other or self < other
-
-    def __lt__(self, other):
-        # if not isinstance(other, SchemaVersion):
-        #     other = SchemaVersion(other)
-        return self.prefix == other.prefix and self.semver < other.semver
 
     def __repr__(self) -> str:
         """So that BaseModels' using us will get our string representation during their str()."""

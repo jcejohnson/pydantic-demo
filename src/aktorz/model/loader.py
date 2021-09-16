@@ -16,7 +16,7 @@ from .exporter import BaseExporter
 from .schema_version import SchemaVersion
 
 
-class Validations(Enum):
+class LoaderValidations(Enum):
     """Ways in which Loader.load() can validate the incoming data against the Model."""
 
     NONE = None
@@ -83,7 +83,7 @@ class Loader:
         self,
         *,
         input: Union[str, dict, FilePath],
-        validate_version: Optional[Validations] = Validations.READABLE,
+        validate_version: Optional[LoaderValidations] = LoaderValidations.READABLE,
         update_version: Optional[bool] = True,
     ) -> BaseVersionedModel:
         """
@@ -98,7 +98,7 @@ class Loader:
 
         TODO: Document this properly.
 
-        if validate_version is not Validations.NONE
+        if validate_version is not LoaderValidations.NONE
             if data.schema_version is not valid against self.version
                 raise ValueError
             if update_version is True
@@ -157,7 +157,7 @@ class Loader:
         self,
         *,
         input: Union[str, dict, FilePath],
-        validate_version: Optional[Validations] = Validations.READABLE,
+        validate_version: Optional[LoaderValidations] = LoaderValidations.READABLE,
         update_version: Optional[bool] = True,
     ) -> BaseVersionedModel:
 
@@ -179,7 +179,9 @@ class Loader:
             raise TypeError(f"Unexpected input type {input.__class__}")
 
         if self._validate_version(
-            data=data, validate_version=cast(Validations, validate_version), update_version=cast(bool, update_version)
+            data=data,
+            validate_version=cast(LoaderValidations, validate_version),
+            update_version=cast(bool, update_version)
         ):
             return self._make_compatible(data)
 
@@ -201,18 +203,18 @@ class Loader:
         return data
 
     def _validate_version(
-        self, *, data: BaseVersionedModel, validate_version: Validations, update_version: bool
+        self, *, data: BaseVersionedModel, validate_version: LoaderValidations, update_version: bool
     ) -> bool:
         """
-        if validate_version == Validations.NONE and update_version
+        if validate_version == LoaderValidations.NONE and update_version
             data.schema_version = self.version (which is a SchemaVersion)
         """
 
         # Note: validate_version() ensures that self.version is always a SchemaVersion()
         assert isinstance(self.version, SchemaVersion)
-        assert isinstance(validate_version, Validations)
+        assert isinstance(validate_version, LoaderValidations)
 
-        if validate_version == Validations.NONE:
+        if validate_version == LoaderValidations.NONE:
             return True
 
         schema_version = data.schema_version  # type: ignore
@@ -221,17 +223,17 @@ class Loader:
             schema_version if isinstance(schema_version, SchemaVersion) else SchemaVersion.create(schema_version)
         )
 
-        if validate_version == Validations.IDENTICAL:
+        if validate_version == LoaderValidations.IDENTICAL:
             if self.version != data_version:
                 raise ValueError(f"Input of version [{data_version}] does not match Model version [{self.version}].")
 
-        if validate_version == Validations.READABLE:
+        if validate_version == LoaderValidations.READABLE:
             if not self.version.can_read(data_version):
                 raise ValueError(
                     f"Input of version [{data_version}] cannot be read by Model version [{self.version}]."
                 )
 
-        if validate_version == Validations.WRITABLE:
+        if validate_version == LoaderValidations.WRITABLE:
             if not self.version.can_write(data_version):
                 raise ValueError(
                     f"Input of version [{data_version}] cannot be written by Model version [{self.version}]."

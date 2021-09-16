@@ -7,10 +7,10 @@ from pydantic import FilePath, ValidationError
 from aktorz.model.loader import Loader
 from aktorz.model.v0_1_1 import VERSION
 
-from .base_test import BaseTest
+from .base_test import BaseVersionModuleTest
 
 
-class Test_0_1_1(BaseTest):  # noqa: N801
+class Test_0_1_1(BaseVersionModuleTest):  # noqa: N801
     """Schema Version 0.1.1 tests."""
 
     # Class constants required by BaseTest

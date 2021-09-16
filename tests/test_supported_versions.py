@@ -12,8 +12,7 @@ from typing import Dict
 
 import pytest
 
-from aktorz.model import BaseModel
-from aktorz.model.supported_versions import SUPPORTED_VERSIONS
+from aktorz.model import BaseModel, SUPPORTED_VERSIONS
 
 from .version_modules import CONFIG_DATA
 

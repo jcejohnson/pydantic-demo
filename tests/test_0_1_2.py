@@ -9,7 +9,7 @@ from pydantic import FilePath, ValidationError
 from aktorz.model import Loader
 from aktorz.model.v0_1_2 import VERSION
 
-from .base_test import BaseTest
+from .base_test import BaseVersionModuleTest
 
 """
 The only difference between v0.1.1 and v0.1.2 is declaring first-class
@@ -47,7 +47,7 @@ def teardown_module(module):
     os.remove(basename + ".c.json")
 
 
-class Test_0_1_2(BaseTest):  # noqa: N801
+class Test_0_1_2(BaseVersionModuleTest):  # noqa: N801
     """Schema Version 0.1.2 tests."""
 
     # Class constants required by BaseTest

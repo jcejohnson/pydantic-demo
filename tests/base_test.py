@@ -14,17 +14,6 @@ class ExpectedWarning(Warning):
 
 
 class BaseTest:
-    """Schema Version 0.1.1 tests."""
-
-    # Class constants required by BaseTest must be provided by each derived class
-
-    MODEL_MODULE = ""
-    TEST_FILE = ""
-    VERSION = ""
-
-    # Our raw test data.
-    _actor_data_dict: dict = {}
-    _actor_data_json: str = ""
 
     # Setup (and tear down)
 
@@ -38,6 +27,70 @@ class BaseTest:
         # Suppress the expected warnings when running under tox.
         if os.environ.get("TOX_ACTIVE", "false").upper() == "TRUE":
             warnings.filterwarnings("ignore", category=ExpectedWarning)
+
+    # Utility methods
+
+    def expected_errors(self, request, *other):
+        key = "-".join([request.node.name, "_".join(other)]) if other else request.node.name
+        return self.__class__._expected_errors[key]
+
+    def verify_exception(self, request, exc_info, *other):
+        expected_errors = self.expected_errors(request, *other)
+        actual_errors = exc_info.value.errors()
+        if expected_errors != actual_errors:
+            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
+
+
+class BaseVersionModuleTest(BaseTest):
+
+    # Class constants required by BaseTest must be provided by each derived class
+
+    MODEL_MODULE = ""
+    TEST_FILE = ""
+    VERSION = ""
+
+    # Fixtures to provide derived class constants.
+
+    @pytest.fixture
+    def model_module(self):
+        return self.__class__.MODEL_MODULE
+
+    @pytest.fixture
+    def schema_version(self):
+        return self.__class__.VERSION
+
+    @pytest.fixture
+    def test_file_basename(self):
+        return self.__class__.TEST_FILE
+
+    # Fixtures to provide copies of the raw data.
+
+    @pytest.fixture
+    def actor_data_path(self, resource_path_root, test_file_basename) -> FilePath:
+        """Returns a fully qualified PosixPath to the actor-data.json file"""
+        return resource_path_root / test_file_basename
+
+    @pytest.fixture
+    def actor_data_dict(self, actor_data_path):
+        """Returns the raw actor data as a dict."""
+        return json.loads(actor_data_path.read_text())
+
+    @pytest.fixture
+    def actor_data_json(self, actor_data_path):
+        """Returns the raw (directly from the file) actor data as a json string.
+        For assertions you should use test_data_json instead.
+        """
+        return actor_data_path.read_text()
+
+    @pytest.fixture
+    def test_data_dict(self, actor_data_dict):
+        """Returns a normalized version of actor_data_dict."""
+        return actor_data_dict
+
+    @pytest.fixture
+    def test_data_json(self, actor_data_dict):
+        """Returns a normalized version of actor_data_json."""
+        return json.dumps(actor_data_dict)
 
     # Tests common to all versions
 
@@ -170,64 +223,3 @@ class BaseTest:
         old_loader = Loader(version=v0_1_0.VERSION)
         old_model = old_loader.load(input=data)
         assert old_model.schema_version == v0_1_0.VERSION
-
-    # Fixtures to provide derived class constants.
-
-    @pytest.fixture
-    def model_module(self):
-        return self.__class__.MODEL_MODULE
-
-    @pytest.fixture
-    def schema_version(self):
-        return self.__class__.VERSION
-
-    @pytest.fixture
-    def test_file_basename(self):
-        return self.__class__.TEST_FILE
-
-    # Fixtures to provide copies of the raw data.
-
-    @pytest.fixture
-    def actor_data_path(self, resource_path_root, test_file_basename) -> FilePath:
-        """Returns a fully qualified PosixPath to the actor-data.json file"""
-        return resource_path_root / test_file_basename
-
-    @pytest.fixture
-    def actor_data_dict(self, actor_data_path):
-        """Returns the raw actor data as a dict."""
-        return json.loads(actor_data_path.read_text())
-        # if not self.__class__._actor_data_dict:
-        #     self.__class__._actor_data_dict = json.loads(actor_data_path.read_text())
-        # return self.__class__._actor_data_dict
-
-    @pytest.fixture
-    def actor_data_json(self, actor_data_path):
-        """Returns the raw (directly from the file) actor data as a json string.
-        For assertions you should use test_data_json instead.
-        """
-        return actor_data_path.read_text()
-        # if not self.__class__._actor_data_json:
-        #     self.__class__._actor_data_json = actor_data_path.read_text()
-        # return self.__class__._actor_data_json
-
-    @pytest.fixture
-    def test_data_dict(self, actor_data_dict):
-        """Returns a normalized version of actor_data_dict."""
-        return actor_data_dict
-
-    @pytest.fixture
-    def test_data_json(self, actor_data_dict):
-        """Returns a normalized version of actor_data_json."""
-        return json.dumps(actor_data_dict)
-
-    # Utility methods
-
-    def expected_errors(self, request, *other):
-        key = "-".join([request.node.name, "_".join(other)]) if other else request.node.name
-        return self.__class__._expected_errors[key]
-
-    def verify_exception(self, request, exc_info, *other):
-        expected_errors = self.expected_errors(request, *other)
-        actual_errors = exc_info.value.errors()
-        if expected_errors != actual_errors:
-            pytest.fail(f"Actual errors: {actual_errors}\nExpected errors: {expected_errors}")
