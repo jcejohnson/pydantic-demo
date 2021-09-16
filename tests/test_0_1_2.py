@@ -6,6 +6,8 @@ from typing import Any, cast
 import pytest
 from pydantic import FilePath, ValidationError
 
+# We are testing the public interface so we will import from
+# the package rather than the underlying modules.
 from aktorz.model import Loader
 from aktorz.model.v0_1_2 import VERSION
 
@@ -193,14 +195,13 @@ class Test_0_1_2(BaseVersionModuleTest):  # noqa: N801
         # That will trigger mypy when we try to get the `actors` property from it
         # since BaseVersionedModel has no such property.
         # Casting load's return value silences mypy
-        module = cast(Any, loader.module())  # aktorz.model.v0_1_2
-        assert module.Model == loader.model()
+        module = cast(Any, loader.module)  # aktorz.model.v0_1_2
+        assert module.Model == loader.model
         assert module.Exporter == loader.exporter()
 
         Model = module.Model  # noqa:  N806
 
         assert Model(**actor_data_dict) == module.model(**actor_data_dict)
-        assert Model(**actor_data_dict) == loader.model()(**actor_data_dict)
         assert Model(**actor_data_dict) == loader.load(input=actor_data_dict)
 
         Exporter = module.Exporter  # noqa:  N806

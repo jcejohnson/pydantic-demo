@@ -1,8 +1,9 @@
 import pytest
 from semver import VersionInfo as Version  # type: ignore
 
-from aktorz.model.base_model import BaseModel
-from aktorz.model.schema_version import SchemaVersion, SemVer
+# We are testing the public interface so we will import from
+# the package rather than the underlying modules.
+from aktorz.model import BaseModel, Loader, SchemaVersion, SemVer
 
 
 class VersionedThing(BaseModel):

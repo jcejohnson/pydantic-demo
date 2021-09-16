@@ -1,12 +1,13 @@
 """
-This module provides a Loader class to load data and create Models instances.
+Import (load) and Export (save) functionality.
 """
+
 
 import importlib
 from enum import Enum, auto
 from pathlib import PosixPath
-from types import ModuleType
-from typing import Optional, Union, cast
+from types import ModuleType as BaseModuleType
+from typing import Any, Optional, Union, cast
 
 from pydantic import FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
@@ -25,21 +26,77 @@ class LoaderValidations(Enum):
     IDENTICAL = auto()
 
 
-@dataclass
-class Loader:
-    """Load data and create Models."""
+class ModuleType(BaseModuleType):
+    """Teach pydantic how to validate types.ModuleType"""
 
-    """The version of the Model created.
-    This also implies that the data is compatible with that Model.
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return v
+
+
+@dataclass
+class ImportExport:
+    """Common behaviors for import (load) and Export (save).
     """
+
     version: Optional[Union[SchemaVersion, str]] = None
+    module: ModuleType = None
+    model: BaseVersionedModel = None
 
     @validator("version")
     @classmethod
-    def validate_version(cls, v):
+    def validate_version(cls, v) -> SchemaVersion:
         if isinstance(v, str):
             return SchemaVersion(v)
         return v
+
+    @validator("module")
+    @classmethod
+    def validate_module(cls, module, values) -> ModuleType:
+        """
+        Get the module containing the objects implementing the schema version provided to Loader().
+
+        loader = Loader(...)
+        module = loader.module()
+
+        Model = module.Model
+        model = Model(**{...})
+
+        Exporter = module.Exporter
+        exporter = Exporter(model=model, version=...)
+        old_data = exporter.dict()
+        """
+
+        schema_version = cast(SchemaVersion, values['version'])
+        version = str(schema_version.semver).replace(".", "_")
+
+        try:
+            module = importlib.import_module(f".{schema_version.prefix}{version}", package=__package__)
+        except ModuleNotFoundError as e1:
+            final_version = str(schema_version.semver.finalize_version()).replace(".", "_")
+            if final_version == version:
+                raise e1
+            try:
+                module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=__package__)
+            except ModuleNotFoundError as e2:
+                raise ModuleNotFoundError(f"{e1} / {e2}")
+
+        return module
+
+    @validator("model")
+    @classmethod
+    def validate_model(cls, model, values) -> BaseVersionedModel:
+        """Get the Model class from the module."""
+        return getattr(cast(ModuleType, values['module']), "Model")
+
+
+@dataclass
+class Loader(ImportExport):
+    """Load data and create Models."""
 
     def export(self, *args, **kwargs) -> BaseExporter:
         """
@@ -69,14 +126,12 @@ class Loader:
         exporter = Exporter(**{...})
 
         """
-        module = self.module()
-        if return_none_if_missing and not hasattr(module, "Exporter"):
+        if return_none_if_missing and not hasattr(self.module, "Exporter"):
             return None
-        return getattr(module, "Exporter")
+        return getattr(self.module, "Exporter")
 
     def has_exporter(self):
-        module = self.module()
-        return hasattr(module, "Exporter")
+        return hasattr(self.module, "Exporter")
 
     @validate_arguments
     def load(
@@ -118,38 +173,7 @@ class Loader:
         Model = loader.model()
         model = Model(**{...})
         """
-        module = self.module()
-        return getattr(module, "Model")
-
-    def module(self) -> ModuleType:
-        """
-        Get the module containing the objects implementing the schema version provided to Loader().
-
-        loader = Loader(...)
-        module = loader.module()
-
-        Model = module.Model
-        model = Model(**{...})
-
-        Exporter = module.Exporter
-        exporter = Exporter(model=model, version=...)
-        old_data = exporter.dict()
-        """
-
-        schema_version = cast(SchemaVersion, self.version)
-        version = str(schema_version.semver).replace(".", "_")
-        try:
-            module = importlib.import_module(f".{schema_version.prefix}{version}", package=__package__)
-        except ModuleNotFoundError as e1:
-            final_version = str(schema_version.semver.finalize_version()).replace(".", "_")
-            if final_version == version:
-                raise e1
-            try:
-                module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=__package__)
-            except ModuleNotFoundError as e2:
-                raise ModuleNotFoundError(f"{e1} / {e2}")
-
-        return module
+        return getattr(self.module, "Model")
 
     # #### Implementation details
 
@@ -161,19 +185,17 @@ class Loader:
         update_version: Optional[bool] = True,
     ) -> BaseVersionedModel:
 
-        model = self.model()
-
         # FIXME: Simple, assumptive implementation with 100% coverage.
         input_type = type(input)
 
         assert input_type in [FilePath, PosixPath, dict, str]
 
         if input_type in [FilePath, PosixPath]:
-            data = model.parse_file(input)
+            data = self.model.parse_file(input)
         elif input_type is dict:
-            data = model.parse_obj(input)
+            data = self.model.parse_obj(input)
         elif input_type is str:
-            data = model.parse_raw(input)
+            data = self.model.parse_raw(input)
         else:
             # TODO: Create a test case for this.
             raise TypeError(f"Unexpected input type {input.__class__}")

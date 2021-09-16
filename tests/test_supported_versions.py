@@ -12,6 +12,8 @@ from typing import Dict
 
 import pytest
 
+# We are testing the public interface so we will import from
+# the package rather than the underlying modules.
 from aktorz.model import BaseModel, SUPPORTED_VERSIONS
 
 from .version_modules import CONFIG_DATA

@@ -1,6 +1,5 @@
 """
-This module provides extended semver support which allows for prefixed
-versions.
+This module provides extended semver support which allows for prefixed versions.
 """
 
 import re

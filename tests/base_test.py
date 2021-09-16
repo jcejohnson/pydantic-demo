@@ -5,8 +5,9 @@ import warnings
 import pytest
 from pydantic import FilePath, ValidationError
 
-from aktorz.model.loader import Loader
-from aktorz.model.schema_version import SchemaVersion, SemVer
+# We are testing the public interface so we will import from
+# the package rather than the underlying modules.
+from aktorz.model import Loader, SchemaVersion, SemVer
 
 
 class ExpectedWarning(Warning):
@@ -111,13 +112,14 @@ class BaseVersionModuleTest(BaseTest):
 
         assert str(SchemaVersion(schema_version)) == schema_version
 
-        Loader(version=SchemaVersion(schema_version))
+        sv = SchemaVersion(schema_version)
+        Loader(version=sv)
         Loader(version=schema_version).version == SchemaVersion(schema_version)
 
     def test_model(self, model_module, schema_version):
         """Test loading of a versioned model"""
 
-        model = Loader(version=schema_version).model()
+        model = Loader(version=schema_version).model
         assert model.__module__ == model_module
 
     def test_load_file(self, schema_version, actor_data_path: FilePath):
