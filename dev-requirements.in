@@ -1,5 +1,4 @@
 tox
-parameterized
 pytest
 pytest-cov
 pytest-resource-path

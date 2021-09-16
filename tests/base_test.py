@@ -36,8 +36,8 @@ class BaseTest:
 
     def setup_method(self, test_method):
         # Suppress the expected warnings when running under tox.
-        if os.environ.get('TOX_ACTIVE', 'false').upper() == 'TRUE':
-            warnings.filterwarnings('ignore', category=ExpectedWarning)
+        if os.environ.get("TOX_ACTIVE", "false").upper() == "TRUE":
+            warnings.filterwarnings("ignore", category=ExpectedWarning)
 
     # Tests common to all versions
 
@@ -119,7 +119,7 @@ class BaseTest:
             warnings.warn(
                 f"Not going to validate that [{self.__class__.VERSION}] is loadable by its own Model. "
                 f"Skipping [{request.node.name}].",
-                ExpectedWarning
+                ExpectedWarning,
             )
             return
 
@@ -142,7 +142,7 @@ class BaseTest:
             warnings.warn(
                 f"Not going to validate that [{self.__class__.VERSION}] is exportable by its own Model. "
                 f"Skipping [{request.node.name}].",
-                ExpectedWarning
+                ExpectedWarning,
             )
             return
 
