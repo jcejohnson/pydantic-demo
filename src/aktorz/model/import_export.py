@@ -9,7 +9,7 @@ import warnings
 from enum import Enum, auto
 from pathlib import Path, PosixPath
 from types import ModuleType as BaseModuleType
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 from pydantic import Extra, FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
@@ -17,18 +17,23 @@ from pydantic.dataclasses import dataclass
 from .base_models import BaseModel, BaseVersionedModel
 from .schema_version import SchemaVersion
 
-
-class LoaderValidations(Enum):
-    """Ways in which Loader.load() can validate the incoming data against the Model."""
-
-    NONE = None
-    READABLE = auto()
-    WRITABLE = auto()
-    IDENTICAL = auto()
+# #### ModuleType Implementation
 
 
 class ModuleType(BaseModuleType):
-    """Teach pydantic how to validate types.ModuleType"""
+    """
+    Teach pydantic how to validate types.ModuleType
+
+    Class properties SchemaVersion and VERSION are also declared because
+    all of our versioned Model implementation modules must provide these.
+    """
+
+    # The data type for SchemaVersion instances
+    SchemaVersion = None
+
+    # The schema version implemented by the module.
+    # type(ModuleType.VERSION) == ModuleType.SchemaVersion
+    VERSION = None
 
     @classmethod
     def __get_validators__(cls):
@@ -39,11 +44,14 @@ class ModuleType(BaseModuleType):
         return v
 
 
+# #### ImportExport Implementation
+
+
 @dataclass
 class ImportExport:
     """Common behaviors for import (load) and Export (transmute)."""
 
-    version: Optional[Union[SchemaVersion, str]] = None
+    version: Union[SchemaVersion, str] = cast(SchemaVersion, None)
     module: ModuleType = cast(ModuleType, None)
     model: BaseVersionedModel = cast(BaseVersionedModel, None)
 
@@ -92,11 +100,70 @@ class ImportExport:
     @classmethod
     def validate_model_field(cls, model, values) -> BaseVersionedModel:
         """Get the Model class from the module."""
-        return getattr(cast(ModuleType, values["module"]), "Model")
+
+        module = cast(ModuleType, values["module"])
+        model = getattr(module, "Model")
+        if issubclass(model, BaseVersionedModel):
+            return model
+
+        # We cannot safely coerce the Model to subclass BaseVersionedModel but we can
+        # at least ensure it has the required schema_version field.
+        assert "schema_version" in model.__fields__
+
+        return model
 
     @classmethod
-    def create(cls, other):
-        return cls(version=other.version, module=other.module, model=other.model)
+    def create(cls, *args, version=None, other=None):
+        """
+        Create a Loader/Exporter with either a version or another Loader/Exporter instance.
+        """
+
+        if args:
+            if isinstance(args[0], str):
+                version = args[0]
+            elif isinstance(args[0], SchemaVersion):
+                version = args[0]
+            else:
+                other = args[0]
+
+        if version:
+            return cls(version=SchemaVersion.create(version))
+
+        assert issubclass(type(other), cls)
+        assert other.module
+        assert other.model
+        assert isinstance(other.module, BaseModuleType)
+
+        # We cannot assert that model is a BaseVersionedModel but we can assert
+        # that is has a schema_version field.
+        assert "schema_version" in other.model.__fields__
+
+        if isinstance(other.model, BaseVersionedModel):
+            return cls(
+                version=SchemaVersion.create(other.version),
+                module=cast(ModuleType, other.module),
+                model=cast(BaseVersionedModel, other.model),
+            )
+
+        # If other.model is not a BaseVersionedModel then we will let the new
+        # instance's validate_model_field() figure it out.
+        return cls(
+            version=SchemaVersion.create(other.version),
+            module=cast(ModuleType, other.module),
+            model=cast(BaseVersionedModel, None),
+        )
+
+
+# #### LoaderValidations Implementation
+
+
+class LoaderValidations(Enum):
+    """Ways in which Loader.load() can validate the incoming data against the Model."""
+
+    NONE = None
+    READABLE = auto()
+    WRITABLE = auto()
+    IDENTICAL = auto()
 
 
 # #### Loader Implementation
@@ -170,26 +237,26 @@ class Loader(ImportExport):
 
         # Convert the input to a dict
         raw_data = self._load_raw_data(input)
+        input_version = raw_data["schema_version"]
 
         # Validate the input data against the implementation model's VERSION
         if not self.validate_version(
-            input_version=SchemaVersion(raw_data["schema_version"]),
+            input_version=SchemaVersion.create(input_version),
             validate_version=cast(LoaderValidations, validate_version),
         ):
             raise ValueError(
-                f"Input schema version [{data.schema_version}] "
-                f"does not satisfy loader validation [{validate_version}]."
+                f"Input schema version [{input_version}] " f"does not satisfy loader validation [{validate_version}]."
             )
 
         # Delegate to pydantic to create a Model from the raw data.
         data = cast(BaseModel, self.model).parse_obj(raw_data)
 
         if update_version:
-            data.schema_version = self.version
+            data["schema_version"] = self.version
 
         return self.make_compatible(data)
 
-    def make_compatible(self, data: BaseVersionedModel) -> BaseVersionedModel:
+    def make_compatible(self, data: Union[BaseVersionedModel, BaseModel]) -> BaseVersionedModel:
         """
         Make `data` compatible with self.version.
         This may return data, update data inplace or return a new BaseVersionedModel
@@ -208,10 +275,15 @@ class Loader(ImportExport):
         # Dealing with this fundamental and significant type change is one of the
         # things we're figuring out how to do.
         if schema_version >= SchemaVersion(prefix=schema_version.prefix, semver="0.2.0"):
-            return data
+            return cast(BaseVersionedModel, data)
 
         data.schema_version = str(schema_version)  # type: ignore
-        return data
+
+        # Models prior to v0.2.0 will not be BaseVersionedModel.
+        # To may mypy happy we cast to Any.
+        # Downstream code needing to deal with all models should use data['schema_version']
+        # whereas cod only working with >= v0.2.0 can use data.schema_version.
+        return cast(Any, data)
 
     def validate_version(self, *, input_version: SchemaVersion, validate_version: LoaderValidations) -> bool:
         """
@@ -220,7 +292,11 @@ class Loader(ImportExport):
 
         assert isinstance(validate_version, LoaderValidations)
 
-        module_version = SchemaVersion.create(self.module.VERSION)
+        # We explicitly use the string form of the module's VERSION because its actual
+        # data type is str in versions < v0.2.0 and SchemaVersion in versions >= v0.2.0
+        # As with other such checks in the code, this is exactly the kind of thing this
+        # demo is meant to illustrate.
+        module_version = SchemaVersion.create(version=str(self.module.VERSION))
 
         if validate_version == LoaderValidations.NONE:
             return True
@@ -343,16 +419,16 @@ class Exporter(ImportExport):
         schema version using `input['schema_version']` for either scenario.
         """
 
-        input_version = input['schema_version']
+        input_version = input["schema_version"]
 
         if not self.silence_identical_versions_warning and input_version == self.version:
-            warnings.warn(f"Using Exporter to when input and target versions are identical is not recommended.")
+            warnings.warn(
+                f"Using Exporter to when input and target versions are identical [{input_version}] is not recommended."
+            )
 
         # Validate the input data against the target version
         if not self.validate_version(input_version=SchemaVersion.create(input_version)):
-            raise ValueError(
-                f"Input schema version [{input_version}] " f"cannot be exported as [{self.version}]."
-            )
+            raise ValueError(f"Input schema version [{input_version}] " f"cannot be exported as [{self.version}].")
 
         if copy_before_export:
             # There is a possibility that make_compatible() may update the dict representation
@@ -374,10 +450,11 @@ class Exporter(ImportExport):
 
         if update_version:
             # See comments in make_compatible() for why we do this version check.
-            if self.version >= SchemaVersion(prefix=self.version.prefix, semver="0.2.0"):
-                model.schema_version = self.version
+            version = cast(SchemaVersion, self.version)
+            if version >= SchemaVersion(prefix=version.prefix, semver="0.2.0"):
+                model["schema_version"] = version
             else:
-                model.schema_version = str(self.version)
+                model["schema_version"] = str(version)
 
         return model
 
@@ -400,7 +477,8 @@ class Exporter(ImportExport):
         # Prior to version 0.2.x the Model's schema_version was a str
         # Dealing with this fundamental and significant type change is one of the
         # things we're figuring out how to do.
-        if self.version >= SchemaVersion(prefix=self.version.prefix, semver="0.2.0"):
+        version = cast(SchemaVersion, self.version)
+        if version >= SchemaVersion(prefix=version.prefix, semver="0.2.0"):
             return raw_dict
 
         raw_dict["schema_version"] = str(raw_dict["schema_version"])

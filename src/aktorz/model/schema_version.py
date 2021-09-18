@@ -117,13 +117,14 @@ class SchemaVersion(SchemaVersionBase):
     @classmethod
     def create(cls, version: Union[SchemaVersionBase, str]):
         """Create a SchemaVersion from either SchemaVersionBase or str."""
-        return cls.parse_obj(cls.get_parts(schema_version=version))
+        parts = cls.get_parts(schema_version=version)
+        return cls.parse_obj(parts)
 
     @classmethod
     def get_parts(cls, schema_version: Union[SchemaVersionBase, str], default_prefix: str = DEFAULT_PREFIX):
         """Return a dict containing the prefix and semver of a SchemaVersionBase or str."""
         if isinstance(schema_version, SchemaVersionBase):
-            return {"prefix": schema_version.prefix, "semver": schema_version.semver}
+            return {"prefix": schema_version.prefix, "semver": str(schema_version.semver)}
         match = SCHEMA_VERSION_REGEX.match(str(schema_version))
         parts = match.groupdict()  # type: ignore
         prefix = parts["prefix"] or default_prefix

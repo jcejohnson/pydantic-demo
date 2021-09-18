@@ -178,18 +178,19 @@ class BaseVersionModuleTest(BaseTest):
             )
             return
 
-        schema_version = self.__class__.VERSION
+        schema_version = SchemaVersion.create(version=self.__class__.VERSION)
         loader = Loader(version=schema_version)
 
         model = loader.load(input=actor_data_dict)
         json = model.json()
 
         with pytest.raises(ValidationError) as exc_info:
-            Loader(version=v0_1_0.VERSION).load(input=json)
+            Loader(version=SchemaVersion.create(v0_1_0.VERSION)).load(input=json)
 
         self.verify_exception(request, exc_info)
 
     def xtest_can_export_0_1_0(self, request, actor_data_dict: dict):
+        """
 
         from .test_0_1_0 import Test_0_1_0 as v0_1_0  # noqa:  N814
 
@@ -225,3 +226,7 @@ class BaseVersionModuleTest(BaseTest):
         old_loader = Loader(version=v0_1_0.VERSION)
         old_model = old_loader.load(input=data)
         assert old_model.schema_version == v0_1_0.VERSION
+
+        """
+
+        pass

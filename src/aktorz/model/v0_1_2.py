@@ -1,12 +1,10 @@
-from dataclasses import dataclass
-from typing import Any, Dict, List, NewType, Optional, Tuple, Union
+from typing import Dict, List, NewType, Optional, Tuple, Union
 
 from pydantic import conint, constr, validator
 
 from .base_model import BaseDictModel, BaseModel
 
 # #### Constants
-
 
 # 0.2.0 : from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)
@@ -18,29 +16,24 @@ VERSION = SchemaVersion("v0.1.2")
 MovieTitle = NewType("MovieTitle", str)
 
 # https://en.wikipedia.org/wiki/History_of_film
-# 0.1.0 : int
 # 0.1.1 : conint(ge=1850)
+# 0.1.0 : int
 Year = NewType("Year", conint(ge=1850))  # type: ignore
 
 # Object identifiers, keys in the json maps / python dicts.
 
-# 0.1.0 : str
 # 0.1.1 : constr(regex=r"[a-z][a-z0-9_]+")
+# 0.1.0 : str
 MovieId = NewType("MovieId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
 
-# 0.1.0 : str
 # 0.1.1 : constr(regex=r"[a-z][a-z0-9_]+")
+# 0.1.0 : str
 PersonId = NewType("PersonId", constr(regex=r"[a-z][a-z0-9_]+"))  # type: ignore
 
 # 0.1.0 : PersonId
 ActorId = NewType("ActorId", PersonId)
 
 # #### Model classes
-
-
-def model(*args, **kwargs):
-    """Construct and return a Model instance"""
-    return Model(*args, **kwargs)
 
 
 class Person(BaseModel):

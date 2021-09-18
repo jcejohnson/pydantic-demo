@@ -7,13 +7,22 @@ import os
 
 import pytest
 
-# We are testing the public interface so we will import from
-# the package rather than the underlying modules.
-from aktorz.model import (SUPPORTED_VERSIONS, BaseModel, BaseVersionedModel, Exporter, Loader, LoaderValidations,
-                          SchemaVersion)
-
 from .base_test import BaseTest
 from .version_modules import CONFIG_DATA
+
+# We are testing the public interface so we will import from
+# the package rather than the underlying modules.
+# isort & black fight over this one so we tell isort to skip it.
+from aktorz.model import (  # isort:skip
+    BaseModel,
+    BaseVersionedModel,
+    Exporter,
+    Loader,
+    LoaderValidations,
+    SchemaVersion,
+    SUPPORTED_VERSIONS,
+)
+
 
 """
 setup/teardown are a quick hack to create v0.1.2 data.
@@ -61,6 +70,33 @@ def skip_incompatible_combinations(func):
     return filter
 
 
+class TestImportExportBaseclass(BaseTest):
+    def test_loader_create(self):
+
+        version = SUPPORTED_VERSIONS[0]
+        Loader(version=version)
+        loader = Loader(version=SchemaVersion.create(version))
+
+        assert Loader.create(version) == loader
+        assert Loader.create(SchemaVersion.create(version)) == loader
+        assert Loader.create(version=version) == loader
+        assert Loader.create(version=SchemaVersion.create(version)) == loader
+
+        assert Loader.create(loader) == loader
+        assert Loader.create(other=loader) == loader
+        assert Loader.create(other=Loader.create(version)) == loader
+
+    def test_exporter_create(self):
+
+        version = SUPPORTED_VERSIONS[0]
+        Exporter(version=version)
+        exporter = Exporter(version=SchemaVersion.create(version))
+
+        assert Exporter.create(version) == exporter
+        assert Exporter.create(version=version) == exporter
+        assert Exporter.create(version=SchemaVersion.create(version)) == exporter
+
+
 class TestReadWrite(BaseTest):
     @pytest.fixture
     def version_modules_by_name(self):
@@ -81,7 +117,7 @@ class TestReadWrite(BaseTest):
     def get_data_path(self, supported_version: str, resource_path_root: str) -> str:
         dotted_version = supported_version.replace("v", "")
         file_name = f"actor-data-{dotted_version}.json"
-        data_path = resource_path_root / file_name
+        data_path = os.path.join(resource_path_root, file_name)
         return data_path
 
     # Tests...
