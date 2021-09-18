@@ -5,7 +5,6 @@ from pydantic import conint, constr, validator
 
 from .base_model import BaseDictModel, BaseModel
 
-
 # #### Constants
 
 
@@ -192,85 +191,3 @@ class Model(BaseModel):
     # 0.1.0 : Dict[ActorId, Actor]
     # 0.1.2 : ActorsById
     actors: ActorsById
-
-
-# #### Import / Export
-
-
-def exporter(*args, **kwargs):
-    """Construct and return an Exporter instance"""
-    return Exporter(*args, **kwargs)
-
-
-@dataclass
-class Exporter:
-    """
-    Export a v0.1.1 model in a variety of formats and older versions.
-    """
-
-    SUPPORTED_VERSIONS = ["v0.1.0", "v0.1.1", VERSION]
-
-    model: Model
-    version: Union[SchemaVersion, str]
-
-    _data: Union[Dict[Any, Any], None] = None
-
-    def dict(self) -> Dict[Any, Any]:
-        return self._transmute()
-
-    def json(self, *args, **kwargs) -> str:
-        import json as dumper
-
-        return dumper.dumps(self._transmute(), *args, **kwargs)
-
-    def _transmute(self) -> Dict[Any, Any]:
-
-        if self.version not in Exporter.SUPPORTED_VERSIONS:
-            raise ValueError(
-                f"Exporter {VERSION} cannot export {self.version}." f"Must be one of {Exporter.SUPPORTED_VERSIONS}"
-            )
-
-        if self._data:
-            return self._data
-
-        self._data = self.model.copy(deep=True).dict()
-
-        if self.version == VERSION:
-            return self._data
-
-        self._data["schema_version"] = self.version
-
-        # Remove the new fields added to CastMember
-        for actor in self._data["actors"].values():
-            iteron = actor["movies"] if isinstance(actor["movies"], list) else actor["movies"].values()
-            for movie in iteron:
-                if not movie["cast"]:
-                    continue
-                for cast_member in movie["cast"].values():
-                    cast_member.pop("first_name")
-                    cast_member.pop("last_name")
-
-        # Other v0.1.1 changes (e.g. - various constraints) do not break compatibility
-
-        # I should be able to do this but I can't figure out how (or if pydantic)
-        # even supports such a thing.
-        # See: https://github.com/samuelcolvin/pydantic/discussions/3193
-        #
-        # self._data = self.model.dict(
-        #     exclude={
-        #         'actors': {
-        #             '__all__': {
-        #                 'movies': {
-        #                     '__all__': {
-        #                         'cast': {
-        #                             '__all__':
-        #                                 {'first_name': ..., 'last_name': ...}
-        #                         }
-        #                     }
-        #                 }
-        #             }
-        #         }
-        #     }
-        # )
-
-        return self._data

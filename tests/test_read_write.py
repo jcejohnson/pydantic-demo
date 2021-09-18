@@ -9,7 +9,8 @@ import pytest
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
-from aktorz.model import SUPPORTED_VERSIONS, Loader, LoaderValidations, SchemaVersion
+from aktorz.model import (SUPPORTED_VERSIONS, BaseModel, BaseVersionedModel, Exporter, Loader, LoaderValidations,
+                          SchemaVersion)
 
 from .base_test import BaseTest
 from .version_modules import CONFIG_DATA
@@ -77,6 +78,12 @@ class TestReadWrite(BaseTest):
     def supported_version(self, request):
         return request.param
 
+    def get_data_path(self, supported_version: str, resource_path_root: str) -> str:
+        dotted_version = supported_version.replace("v", "")
+        file_name = f"actor-data-{dotted_version}.json"
+        data_path = resource_path_root / file_name
+        return data_path
+
     # Tests...
 
     @skip_incompatible_combinations
@@ -99,20 +106,37 @@ class TestReadWrite(BaseTest):
         assert iv.can_write(sv), f"[{iv}] can write [{sv}]"
 
     @skip_incompatible_combinations
-    def test_can_read(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
+    def test_can_read_and_export(
+        self, implemented_version, supported_version, version_modules_by_version, resource_path_root
+    ):
         """
-        For any Model having a SchemaVersion that thinks it can read data of a supported version, verify that the
-        Model actually can read data of that version.
-        """
-        pass
+        For any Model having a SchemaVersion that thinks it can read data of a supported version,
+        verify that the Model actually can read data of that version.
 
-    @skip_incompatible_combinations
-    def test_can_write(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
+        We also verify that we can serialize the data. We don't need to explicitly test writing to
+        a file since that is simply json.dump().
         """
-        For any Model having a SchemaVersion that thinks it can read data of a supported version, verify that the
-        Model actually can write data of that version.
-        """
-        pass
+
+        data_path = self.get_data_path(supported_version, resource_path_root)
+        loader = Loader(version=implemented_version)
+        data = loader.load(input=data_path, update_version=False)
+
+        # Because the model may have default values not present in the input we cannot assert
+        # that the raw input data and parsed model data are identical. The best we can do at
+        # this level is ensure that the schema version matches what we expected to read.
+
+        assert data.schema_version == supported_version
+
+        # Serialization to json should not throw any exceptions.
+        as_json = data.json()  # Delegates to data.dict()
+
+        # Creating a new model from the exported json should be identical to the original.
+        assert loader.model.parse_raw(as_json) == data
+
+        # Creating a deep copy will give us an identical Model that is a new instance.
+        duplicate = data.copy(deep=True)
+        assert duplicate == data
+        assert not (duplicate is data)
 
     @skip_incompatible_combinations
     def test_write_read(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
@@ -120,7 +144,37 @@ class TestReadWrite(BaseTest):
         Combine the two above tests to verify that when a Model's data is exported to a supported version another
         Model can read that exported data.
         """
-        pass
+
+        data_path = self.get_data_path(supported_version, resource_path_root)
+        loader = Loader(version=implemented_version)
+        input_data = loader.load(input=data_path, update_version=True)
+        assert input_data.schema_version == implemented_version
+
+        if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
+            assert isinstance(input_data, BaseVersionedModel)
+        else:
+            assert not isinstance(input_data, BaseVersionedModel)
+        assert isinstance(input_data, BaseModel)
+
+        # If the target version is missing fields that are present in the input version
+        # then those will be dropped during the export. This is as intended because the
+        # exported version must be compatible with the target version.
+        exporter = Exporter(version=supported_version)
+        exported_data = exporter.export(input=input_data, update_version=False)
+        assert exported_data.schema_version == implemented_version
+
+        # If the target version is missing fields that are present in the input version
+        # then they will not be present in exported_data.
+        # Note that new required fields requires a major bump (or minor if major is zero)
+        # and that skip_incompatible_combinations should filter out those scenarios.
+
+        imported_data = loader.load(input=exported_data.dict(), update_version=True)
+        assert imported_data.schema_version == implemented_version
+
+        # There is no guarantee that input_data will be identical to the round-tripped data
+        # because optional fields filter out of exported_data will now have their default values.
+        # TODO : Craft a test case specifically for this scenario.
+        assert imported_data.dict() == input_data.dict()
 
     @skip_incompatible_combinations
     def xtest_foo(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
