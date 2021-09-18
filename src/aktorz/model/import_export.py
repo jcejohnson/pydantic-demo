@@ -17,10 +17,6 @@ from .base_models import BaseModel, BaseVersionedModel
 from .schema_version import SchemaVersion
 
 
-class BaseExporter:
-    pass
-
-
 class LoaderValidations(Enum):
     """Ways in which Loader.load() can validate the incoming data against the Model."""
 
@@ -52,7 +48,7 @@ class ImportExport:
 
     @validator("version")
     @classmethod
-    def validate_version(cls, v) -> SchemaVersion:
+    def validate_version_field(cls, v) -> SchemaVersion:
         # Adding @dataclass to Loader will cause this validator to be ignored. Why?
         if isinstance(v, str):
             return SchemaVersion.create(v)
@@ -60,7 +56,7 @@ class ImportExport:
 
     @validator("module")
     @classmethod
-    def validate_module(cls, module, values) -> ModuleType:
+    def validate_module_field(cls, module, values) -> ModuleType:
         """
         Get the module containing the objects implementing the schema version provided to Loader().
 
@@ -93,7 +89,7 @@ class ImportExport:
 
     @validator("model")
     @classmethod
-    def validate_model(cls, model, values) -> BaseVersionedModel:
+    def validate_model_field(cls, model, values) -> BaseVersionedModel:
         """Get the Model class from the module."""
         return getattr(cast(ModuleType, values["module"]), "Model")
 
@@ -103,55 +99,6 @@ LoaderType = None
 
 class Loader(ImportExport):
     """Load data and create Models."""
-
-    # vvv goes away
-
-    def export(self, *args, **kwargs) -> BaseExporter:
-        """
-        Construct and return an Exporter for the model.
-        Raises AttributeError if there is no Exporter for the version.
-
-        export() is intended as a convenience method when you want a one-use Exporter.
-        It'll save you a little typing, but not much.
-
-        loader = Loader(...)
-        d_1_2_3 = loader.export(**eargs).dict({"model": model, "version": "v1.2.3"})
-        j_2_3_4 = loader.export(**eargs).json({"model": model, "version": "v2.3.4"})
-
-        ** Note that not all models can export all versions.
-
-        """
-        return self.exporter()(*args, **kwargs)
-
-    def exporter(self, return_none_if_missing: Optional[bool] = False):
-        """
-        Get the Exporter class which implements the schema version provided to Loader().
-        Raises AttributeError if there is no Exporter for the version.
-        See also: has_exporter()
-
-        loader = Loader(...)
-        Exporter = loader.exporter()
-        exporter = Exporter(**{...})
-
-        """
-        if return_none_if_missing and not hasattr(self.module, "Exporter"):
-            return None
-        return getattr(self.module, "Exporter")
-
-    def has_exporter(self):
-        return hasattr(self.module, "Exporter")
-
-    # ^^^^ goes away
-
-    def model(self):
-        """
-        Get the Model class which implements the schema version provided to Loader().
-
-        loader = Loader(...)
-        Model = loader.model()
-        model = Model(**{...})
-        """
-        return getattr(self.module, "Model")
 
     def loader(self):
         """
@@ -322,3 +269,44 @@ class Loader(ImportExport):
 
 # Update `LoaderType` to refer to our new Loader class
 LoaderType = Loader
+
+
+class CaCa:
+    # vvv goes away
+
+    def export(self, *args, **kwargs):
+        """
+        Construct and return an Exporter for the model.
+        Raises AttributeError if there is no Exporter for the version.
+
+        export() is intended as a convenience method when you want a one-use Exporter.
+        It'll save you a little typing, but not much.
+
+        loader = Loader(...)
+        d_1_2_3 = loader.export(**eargs).dict({"model": model, "version": "v1.2.3"})
+        j_2_3_4 = loader.export(**eargs).json({"model": model, "version": "v2.3.4"})
+
+        ** Note that not all models can export all versions.
+
+        """
+        return self.exporter()(*args, **kwargs)
+
+    def exporter(self, return_none_if_missing: Optional[bool] = False):
+        """
+        Get the Exporter class which implements the schema version provided to Loader().
+        Raises AttributeError if there is no Exporter for the version.
+        See also: has_exporter()
+
+        loader = Loader(...)
+        Exporter = loader.exporter()
+        exporter = Exporter(**{...})
+
+        """
+        if return_none_if_missing and not hasattr(self.module, "Exporter"):
+            return None
+        return getattr(self.module, "Exporter")
+
+    def has_exporter(self):
+        return hasattr(self.module, "Exporter")
+
+    # ^^^^ goes away

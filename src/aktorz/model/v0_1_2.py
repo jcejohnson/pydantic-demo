@@ -6,10 +6,6 @@ from pydantic import conint, constr, validator
 from .base_model import BaseDictModel, BaseModel
 
 
-class BaseExporter:
-    pass
-
-
 # #### Constants
 
 
@@ -207,7 +203,7 @@ def exporter(*args, **kwargs):
 
 
 @dataclass
-class Exporter(BaseExporter):
+class Exporter:
     """
     Export a v0.1.1 model in a variety of formats and older versions.
     """

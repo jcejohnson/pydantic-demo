@@ -197,19 +197,19 @@ class Test_0_1_2(BaseVersionModuleTest):  # noqa: N801
         # Casting load's return value silences mypy
         module = cast(Any, loader.module)  # aktorz.model.v0_1_2
         assert module.Model == loader.model
-        assert module.Exporter == loader.exporter()
+        # assert module.Exporter == loader.exporter()
 
         Model = module.Model  # noqa:  N806
 
         assert Model(**actor_data_dict) == module.model(**actor_data_dict)
         assert Model(**actor_data_dict) == loader.load(input=actor_data_dict)
 
-        Exporter = module.Exporter  # noqa:  N806
-        eargs = {"model": Model(**actor_data_dict), "version": "v0.1.0"}
+        # Exporter = module.Exporter  # noqa:  N806
+        # eargs = {"model": Model(**actor_data_dict), "version": "v0.1.0"}
 
-        assert Exporter(**eargs) == module.exporter(**eargs)
-        assert Exporter(**eargs) == loader.exporter()(**eargs)
-        assert Exporter(**eargs) == loader.export(**eargs)
+        # assert Exporter(**eargs) == module.exporter(**eargs)
+        # assert Exporter(**eargs) == loader.exporter()(**eargs)
+        # assert Exporter(**eargs) == loader.export(**eargs)
 
     # Define expected pydantic errors keyed by test name and optional qualifiers.
     # This helps reduce the noise level of each test and makes it easier to reuse
