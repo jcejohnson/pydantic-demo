@@ -109,7 +109,7 @@ class TestSupportedVersions:
             version in supported_versions
         ), f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
 
-    @pytest.mark.parametrize("version", [(version) for version in CONFIG_DATA.version_modules_by_version])
+    @pytest.mark.parametrize("version", [(version) for version in SUPPORTED_VERSIONS])
     def test_every_version_is_implemented(self, version, implemented_versions):
         """Verify that every supported version has an implementation module."""
 
