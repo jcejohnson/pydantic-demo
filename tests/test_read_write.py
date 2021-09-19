@@ -7,6 +7,8 @@ import os
 
 import pytest
 
+from pathlib import Path
+
 from .base_test import BaseTest
 from .version_modules import CONFIG_DATA
 
@@ -50,6 +52,8 @@ def skip_incompatible_combinations(func):
     """
     A simple decorator that will only delegate if implemented_version is expected to be compatible
     with supported_version. That is, where implemented_version >= supported_version.
+
+    Passes Loader instance and Path(data_path) to the wrapped function instead of `resource_path_root`
     """
 
     def filter(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
@@ -57,15 +61,29 @@ def skip_incompatible_combinations(func):
         schema_version = SchemaVersion.create(implemented_version)
         assert schema_version == implemented_version
 
-        if schema_version >= supported_version:
-            return func(self, schema_version, supported_version, version_modules_by_version, resource_path_root)
+        if schema_version < supported_version:
+            m = (
+                f"Implementation version [{schema_version}] is not required to "
+                f" read/writesupported version [{supported_version}]."
+            )
+            # warnings.warn(m, ExpectedWarning)
+            return pytest.skip(m)
 
-        m = (
-            f"Implementation version [{schema_version}] is not required to "
-            f" read/writesupported version [{supported_version}]."
-        )
-        # warnings.warn(m, ExpectedWarning)
-        return pytest.skip(m)
+        loader = Loader(version=implemented_version)
+        assert loader
+
+        dotted_version = supported_version.replace("v", "")
+        file_name = f"actor-data-{dotted_version}.json"
+        data_path = Path(os.path.join(resource_path_root, file_name))
+        assert data_path.exists()
+
+        return func(self,
+                    implemented_version=schema_version,
+                    supported_version=supported_version,
+                    version_modules_by_version=version_modules_by_version,
+                    loader=loader,
+                    data_path=data_path
+                    )
 
     return filter
 
@@ -114,16 +132,10 @@ class TestReadWrite(BaseTest):
     def supported_version(self, request):
         return request.param
 
-    def get_data_path(self, supported_version: str, resource_path_root: str) -> str:
-        dotted_version = supported_version.replace("v", "")
-        file_name = f"actor-data-{dotted_version}.json"
-        data_path = os.path.join(resource_path_root, file_name)
-        return data_path
-
     # Tests...
 
     @skip_incompatible_combinations
-    def test_can_x(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
+    def test_can_x(self, implemented_version, supported_version, version_modules_by_version, *args, **kwargs):
         """
         Verify that any SchemaVersion representing a version greater-than or equal-to some supported version
         _thinks_ that its mdel can read and write data of that supported version.
@@ -143,7 +155,7 @@ class TestReadWrite(BaseTest):
 
     @skip_incompatible_combinations
     def test_can_read_and_export(
-        self, implemented_version, supported_version, version_modules_by_version, resource_path_root
+        self, implemented_version, supported_version, version_modules_by_version, loader, data_path
     ):
         """
         For any Model having a SchemaVersion that thinks it can read data of a supported version,
@@ -153,8 +165,6 @@ class TestReadWrite(BaseTest):
         a file since that is simply json.dump().
         """
 
-        data_path = self.get_data_path(supported_version, resource_path_root)
-        loader = Loader(version=implemented_version)
         data = loader.load(input=data_path, update_version=False)
 
         # Because the model may have default values not present in the input we cannot assert
@@ -175,14 +185,13 @@ class TestReadWrite(BaseTest):
         assert not (duplicate is data)
 
     @skip_incompatible_combinations
-    def test_write_read(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
+    def test_write_read(self, implemented_version, supported_version, version_modules_by_version, loader, data_path):
         """
-        Combine the two above tests to verify that when a Model's data is exported to a supported version another
-        Model can read that exported data.
+        Verify that a Model of can export itself into a new Model of a supported version.
+
+        Exporter.export() does a very non-threadsafe thing to make this work!
         """
 
-        data_path = self.get_data_path(supported_version, resource_path_root)
-        loader = Loader(version=implemented_version)
         input_data = loader.load(input=data_path, update_version=True)
         assert input_data.schema_version == implemented_version
 
@@ -195,12 +204,17 @@ class TestReadWrite(BaseTest):
         # If the target version is missing fields that are present in the input version
         # then those will be dropped during the export. This is as intended because the
         # exported version must be compatible with the target version.
+        # Exporter does this by tweaking BaseModel.Config.extra which affects _all_
+        # subclasses of BaseModel. This is extremely not threadsafe.
         exporter = Exporter(version=supported_version)
         exported_data = exporter.export(input=input_data, update_version=False)
         assert exported_data.schema_version == implemented_version
 
-        # If the target version is missing fields that are present in the input version
-        # then they will not be present in exported_data.
+        # Now we use the original Loader (for the implemented version) to re-read the
+        # data that we just exported to the supported version. Since exports are generally
+        # newer-version-to-older-version there is a chance that the exported data will be
+        # missing optional fields and that the new implemented version's Model will not be
+        # identical to the original implemented version's Model (input_data).
         # Note that new required fields requires a major bump (or minor if major is zero)
         # and that skip_incompatible_combinations should filter out those scenarios.
 
@@ -211,23 +225,3 @@ class TestReadWrite(BaseTest):
         # because optional fields filter out of exported_data will now have their default values.
         # TODO : Craft a test case specifically for this scenario.
         assert imported_data.dict() == input_data.dict()
-
-    @skip_incompatible_combinations
-    def xtest_foo(self, implemented_version, supported_version, version_modules_by_version, resource_path_root):
-
-        # I need to rename the test data files to include the prefix.
-        # Until then I'll strip it out when building the filename
-        file_name = f"actor-data-{supported_version.replace('v','')}.json"
-        data_path = resource_path_root / file_name
-        assert os.path.exists(data_path), f"Test file [{data_path}] missing."
-
-        loader = Loader(version=implemented_version)
-        assert loader
-
-        # Load the data into a Model.
-        # Validate that the model is capable of creating output compatible with the data's version.
-        # Update the schema_version in the model to match the model's version.
-        model = loader.load(input=data_path, validate_version=LoaderValidations.WRITABLE, update_version=True)
-        assert model
-
-        # TODO: ask the loader to export `model` in `supported_version` format
