@@ -153,6 +153,25 @@ class ImportExport:
             model=cast(BaseVersionedModel, None),
         )
 
+    def get_schema_version(self, model: Union[BaseVersionedModel, BaseModel, dict]) -> SchemaVersion:
+        """
+        Get the schema version of an input Model that is to be exported.
+        """
+
+        if isinstance(model, dict):
+            return SchemaVersion.create(model["schema_version"])
+
+        if isinstance(model.schema_version, SchemaVersion):
+            return model.schema_version
+
+        return SchemaVersion.create(model.schema_version)
+
+    def set_schema_version(self, model):
+        """
+        Set the version in a Model created by export_model()
+        """
+        model.schema_version = self.version
+
 
 # #### LoaderValidations Implementation
 
@@ -228,62 +247,72 @@ class Loader(ImportExport):
         input: Union[str, dict, FilePath],
         validate_version: Optional[LoaderValidations] = LoaderValidations.READABLE,
         update_version: Optional[bool] = True,
-    ) -> BaseVersionedModel:
+    ) -> Union[BaseVersionedModel, BaseModel]:
         """
-        Load input data and return a Model.
-
-        Optionally updates `schema_version` in the returned Model to match self.version.
+        Create a Model instance from the input data which can be a json string, a dict
+        or a FilePath pointing to a json document.
         """
 
         # Convert the input to a dict
-        raw_data = self._load_raw_data(input)
-        input_version = raw_data["schema_version"]
+        raw_data = self.load_raw_data(input)
 
-        # Validate the input data against the implementation model's VERSION
+        # Extract the schema version from the incoming data.
+        input_version = self.get_schema_version(model=raw_data)
+
+        # Validate that the incoming data's version satisfies `validate_version`.
         if not self.validate_version(
-            input_version=SchemaVersion.create(input_version),
+            input_version=input_version,
             validate_version=cast(LoaderValidations, validate_version),
         ):
             raise ValueError(
-                f"Input schema version [{input_version}] " f"does not satisfy loader validation [{validate_version}]."
+                f"Input schema version [{input_version}] does not satisfy loader validation [{validate_version}]."
             )
 
-        # Delegate to pydantic to create a Model from the raw data.
-        data = cast(BaseModel, self.model).parse_obj(raw_data)
+        # Manipulate the input (if necessary) to make it compatible with the target Model
+        raw_data = self.make_compatible(data=raw_data)
+
+        # Delegate to pydantic to create a Model from the raw data dict.
+        model = self.materialze_model(data=raw_data)
 
         if update_version:
-            data["schema_version"] = self.version
+            self.set_schema_version(model=model)
 
-        return self.make_compatible(data)
+        return model
 
-    def make_compatible(self, data: Union[BaseVersionedModel, BaseModel]) -> BaseVersionedModel:
+    def make_compatible(self, data: dict) -> dict:
         """
-        Make `data` compatible with self.version.
-        This may return data, update data inplace or return a new BaseVersionedModel
-        instance.
+        Update `data` if necessary to make it compatible with with self.version.
 
-        Note that this does not (and subclasses should not) update the value of
-        data.schema_version. That will have been done by load_input() before it
-        invokes make_compatible().
+        Note that the `schema_version` element of the returned dict should not
+        be updated by this method. That will be done by set_schema_version()
+        after the new Model is created if load_input() was given a truthy value
+        for update_version.
+
+        The caveat to this rule is if you have additional constraints on the target
+        version's Model's schema_version attribute that would fail during parse_obj().
+        In such a scenario the raw_dict's schema_version must be updated here in
+        order to make it compatible with the target Model's parse_obj().
         """
 
-        schema_version = data.schema_version  # type: ignore
-        if not isinstance(schema_version, SchemaVersion):
-            schema_version = SchemaVersion.create(schema_version)
+        return data
 
-        # Prior to version 0.2.x the Model's schema_version was a str
-        # Dealing with this fundamental and significant type change is one of the
-        # things we're figuring out how to do.
-        if schema_version >= SchemaVersion(prefix=schema_version.prefix, semver="0.2.0"):
-            return cast(BaseVersionedModel, data)
+    def materialze_model(self, data: dict) -> Union[BaseVersionedModel, BaseModel]:
+        """
+        Materialize a Model from a compatible dict.
 
-        data.schema_version = str(schema_version)  # type: ignore
+        Delegates to pydantic to create a Model from the raw data dict.
 
-        # Models prior to v0.2.0 will not be BaseVersionedModel.
-        # To may mypy happy we cast to Any.
-        # Downstream code needing to deal with all models should use data['schema_version']
-        # whereas cod only working with >= v0.2.0 can use data.schema_version.
-        return cast(Any, data)
+        This will fail if the incoming data does not conform to the Model's schema.
+        Use make_compatible() to manipulate the data if that is a concern or load
+        the data with a compatible Model and use Exporter to export it to the
+        desired Model.
+
+        e.g. -- If the incoming data is v0.5.6 and you want to load it into a v0.5.3
+        Model, use Loader to load the data into a v0.5.6 Model then use Exporter to
+        create the target v0.5.3 Model from the v0.5.6 Model instance instead of
+        trying to directly load the v0.5.6 data into a v0.5.3 Model.
+        """
+        return cast(BaseVersionedModel, self.model).parse_obj(data)
 
     def validate_version(self, *, input_version: SchemaVersion, validate_version: LoaderValidations) -> bool:
         """
@@ -292,11 +321,9 @@ class Loader(ImportExport):
 
         assert isinstance(validate_version, LoaderValidations)
 
-        # We explicitly use the string form of the module's VERSION because its actual
-        # data type is str in versions < v0.2.0 and SchemaVersion in versions >= v0.2.0
-        # As with other such checks in the code, this is exactly the kind of thing this
-        # demo is meant to illustrate.
-        module_version = SchemaVersion.create(version=str(self.module.VERSION))
+        # Delegate to SchemaVersion.create() to convert (if necessary) the implementation module's
+        # VERSION attribute to a SchemaVersion.
+        module_version = SchemaVersion.create(version=self.module.VERSION)
 
         if validate_version == LoaderValidations.NONE:
             return True
@@ -308,13 +335,21 @@ class Loader(ImportExport):
                 )
 
         if validate_version == LoaderValidations.READABLE:
-            if not module_version.can_read(input_version):
+            can_read = (
+                module_version.can_read if not hasattr(self.module, "can_read") else getattr(self.module, "can_read")
+            )
+            if not can_read(input_version):
                 raise ValueError(
                     f"Input of version [{input_version}] cannot be read by " f"Model version [{module_version}]."
                 )
 
         if validate_version == LoaderValidations.WRITABLE:
-            if not module_version.can_write(input_version):
+            can_write = (
+                module_version.can_write
+                if not hasattr(self.module, "can_write")
+                else getattr(self.module, "can_write")
+            )
+            if not can_write(input_version):
                 raise ValueError(
                     f"Input of version [{input_version}] cannot be written by " f"Model version [{module_version}]."
                 )
@@ -323,7 +358,7 @@ class Loader(ImportExport):
 
     # #### Implementation details
 
-    def _load_raw_data(self, input):
+    def load_raw_data(self, input):
         input_type = type(input)
 
         assert input_type in [FilePath, PosixPath, dict, str]
@@ -354,12 +389,17 @@ ExporterType = None
 class Exporter(ImportExport):
     """
     Extend pydantic's native ability to export as dict and json with the ability
-    to export a Model to another compatible Model version. Subclasses of Exporter
-    may extend this further to allow a Model to export itself to Model versions
-    not explicitly implied by their SchemaVersion compatibility.
+    to export a Model to another compatible Model version.
+
+    Subclasses of Exporter may extend this further to allow a Model to export itself
+    to Model versions not explicitly implied by their SchemaVersion compatibility.
+
+    Subclasses may also need to override several of the helper methods where Exporter
+    expects to find a `schema_version` attribute of type SchemaVersion.
     """
 
     silence_identical_versions_warning: bool = False
+    ignore_extra: bool = True
 
     @validate_arguments
     def export(
@@ -368,7 +408,7 @@ class Exporter(ImportExport):
         input: Union[BaseVersionedModel, BaseModel],
         update_version: Optional[bool] = True,
         copy_before_export: Optional[bool] = False,
-    ) -> BaseVersionedModel:
+    ) -> Union[BaseVersionedModel, BaseModel]:
         """
         Create a new Model instance from the input Model.
         Delegates to export_model() after fetching the target version's custom
@@ -408,53 +448,38 @@ class Exporter(ImportExport):
         input: Union[BaseVersionedModel, BaseModel],
         update_version: Optional[bool] = True,
         copy_before_export: Optional[bool] = False,
-    ) -> BaseVersionedModel:
+    ) -> Union[BaseVersionedModel, BaseModel]:
         """
         Create a Model instance from the input Model.
 
         Optionally updates `schema_version` in the returned Model to match self.version.
-
-        input may be a BaseVersionedModel (v0.2.0 and beyond) or a BaseModel.
-        Fortunately, BaseModel implements dict-like behavior so we can get the input model's
-        schema version using `input['schema_version']` for either scenario.
         """
 
-        input_version = input["schema_version"]
+        input_version = self.get_schema_version(model=input)
 
+        # Warn the user if they're doing things the hard way.
         if not self.silence_identical_versions_warning and input_version == self.version:
             warnings.warn(
-                f"Using Exporter to when input and target versions are identical [{input_version}] is not recommended."
+                f"Using Exporter when input and target versions are identical [{input_version}] is not recommended."
             )
 
-        # Validate the input data against the target version
-        if not self.validate_version(input_version=SchemaVersion.create(input_version)):
-            raise ValueError(f"Input schema version [{input_version}] " f"cannot be exported as [{self.version}].")
+        # Validate the input data against self.version
+        if not self.validate_version(input_version=input_version):
+            raise ValueError(f"Input schema version [{input_version}] cannot be exported as [{self.version}].")
 
         if copy_before_export:
             # There is a possibility that make_compatible() may update the dict representation
             # of the input data. Set copy_before_export if this is a concern.
             input = input.copy(deep=True)
 
-        # Convert the input to a dict compatible with the Model for our target version.
-        raw_data = self.make_compatible(input)
+        # Convert the input to a dict and manipulate it (if necessary) to make it compatible with the target Model
+        raw_data = self.make_compatible(data=input)
 
-        # Delegate to pydantic to create a Model from the now-compatible raw data.
-        # We know this will fail if the input model has fields that are not present in
-        # the target model. We will tell pydantic to ignore extra fields so that we
-        # don't have to explicitly list each one.
-        # This is absolutely not thread safe!
-        extra = BaseModel.Config.extra
-        BaseModel.Config.extra = Extra.ignore
-        model = self.model.parse_obj(raw_data)
-        BaseModel.Config.extra = extra
+        # Delegate to pydantic to create a Model from the raw data dict.
+        model = self.materialze_model(data=raw_data)
 
         if update_version:
-            # See comments in make_compatible() for why we do this version check.
-            version = cast(SchemaVersion, self.version)
-            if version >= SchemaVersion(prefix=version.prefix, semver="0.2.0"):
-                model["schema_version"] = version
-            else:
-                model["schema_version"] = str(version)
+            self.set_schema_version(model=model)
 
         return model
 
@@ -462,9 +487,10 @@ class Exporter(ImportExport):
         """
         Return a dict representation of `data` that is compatible with self.version.
 
-        Note that thie `schema_version` element of the returned dict should be the
-        same as data.schema_version. export_model() will update the final model's
-        schema_version after parsing our return value if update_version is truthy.
+        Note that the `schema_version` element of the returned dict should not
+        be updated by this method. That will be done by set_schema_version()
+        after the new Model is created if export_model() was given a truthy value
+        for update_version.
 
         The caveat to this rule is if you have additional constraints on the target
         version's Model's schema_version attribute that would fail during parse_obj().
@@ -472,17 +498,36 @@ class Exporter(ImportExport):
         order to make it compatible with the target Model's parse_obj().
         """
 
-        raw_dict = data.dict()
+        return data.dict(include=self.get_includes(), exclude=self.get_excludes())
 
-        # Prior to version 0.2.x the Model's schema_version was a str
-        # Dealing with this fundamental and significant type change is one of the
-        # things we're figuring out how to do.
-        version = cast(SchemaVersion, self.version)
-        if version >= SchemaVersion(prefix=version.prefix, semver="0.2.0"):
-            return raw_dict
+    def get_includes(self) -> Union["AbstractSetIntStr", "MappingIntStrAny"]:
+        return cast(Union["AbstractSetIntStr", "MappingIntStrAny"], None)
 
-        raw_dict["schema_version"] = str(raw_dict["schema_version"])
-        return raw_dict
+    def get_excludes(self) -> Union["AbstractSetIntStr", "MappingIntStrAny"]:
+        return cast(Union["AbstractSetIntStr", "MappingIntStrAny"], None)
+
+    def materialze_model(self, data: dict) -> Union[BaseVersionedModel, BaseModel]:
+        """
+        Materialize a Model from a compatible dict representation of another Model.
+
+        Delegates to pydantic to create a Model from the raw data dict.
+
+        We know this will fail if the input model has fields that are not present in
+        the target model. We will tell pydantic to ignore extra fields so that we
+        don't have to explicitly list each one.
+
+        This is absolutely not thread safe if self.ignore_extra is truthy!
+        """
+
+        if not self.ignore_extra:
+            return self.model.parse_obj(data)
+
+        extra = BaseModel.Config.extra
+        BaseModel.Config.extra = Extra.ignore
+        model = self.model.parse_obj(data)
+        BaseModel.Config.extra = extra
+
+        return model
 
     def validate_version(self, *, input_version: SchemaVersion) -> bool:
         """
@@ -496,31 +541,14 @@ class Exporter(ImportExport):
         (and will probably need to override make_compatible()) in order to allow this.
         """
 
-        if input_version.can_write(self.version):
+        can_write = (
+            input_version.can_write if not hasattr(self.module, "can_write") else getattr(self.module, "can_write")
+        )
+
+        if can_write(self.version):
             return True
 
         raise ValueError(f"Input of version [{input_version}] cannot be exported as [{self.version}].")
-
-    # #### Implementation details
-
-    def _export_raw_data(self, input):
-        input_type = type(input)
-
-        assert input_type in [FilePath, PosixPath, dict, str]
-
-        if input_type in [FilePath, PosixPath]:
-            path = cast(Path, input)
-            with open(path.as_posix()) as f:
-                return json.export(f)
-
-        if input_type is dict:
-            return cast(dict, input)
-
-        if input_type is str:
-            return json.exports(cast(str, input))
-
-        # TODO: Create a test case for this.
-        raise TypeError(f"Unexpected input type {input.__class__}")
 
 
 # Update `ExporterType` to refer to our new Exporter class

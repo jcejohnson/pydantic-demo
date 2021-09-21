@@ -35,17 +35,16 @@ Follow semver: major.minor.patch\[-rc#\]
 
 Our focus is primarily on consuming a json document of a specified schema version.
 
-Any given document version M.m1.p1 should be comsumable by any model M.m2.p2 or 0.m.p1 should be comsumable by any model 0.m.p2 where M = 0 when m2 >= m1 and p2 >= p1.
+Given a document having version D, Model M1 having version V1 and Model M2 having version V2 where all three versions share the same major component (or minor component if major component is zero):
+- M1 must be able to directly load documents (via m1.parse_*()) matching its version (V1 == D).
+- M1 must be able to read (via Loader) documents writen by recent older models (V1 >= D).
+- M1 must be able to create an output document (via Exporter) consumable by recent older models (V1 >= V2, V1 -> D, D <= V2).
+- M1 is _not_ required to create a default output document (e.g. - m1.dict()) consumable by any older models (V1 > V2).
+- M2 is _not_ required to consume (in any way) a document created by a newer model (V2 < D).
 
-Any given document version M.m1.p1 is not required be comsumable by any model M.m2.p2
-when m2 < m1 or when m2 = m1 and p2 < p1.
+No compatibility is required or assumed when major components differ (or minor components if major is zero).
 
-In other words:
-- A model must be able to read documents writen by recent older models.
-- A model is _not_ required to create a default output document consumable by any older models.
-- A model must be able to create an optional output document consumable by recent older models.
-
-No compatibility is required or assumed when major numbers differ.
+Through custom Loader/Exporter implementations it is permissible (but not required) for implementation modules to provide read/write capability beyond the basic requirements stated here.
 
 ### Major
 

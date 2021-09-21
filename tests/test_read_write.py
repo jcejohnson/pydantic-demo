@@ -4,10 +4,9 @@ Test that all modules can read and write the things they say they can.
 
 import json
 import os
+from pathlib import Path
 
 import pytest
-
-from pathlib import Path
 
 from .base_test import BaseTest
 from .version_modules import CONFIG_DATA
@@ -63,8 +62,8 @@ def skip_incompatible_combinations(func):
 
         if schema_version < supported_version:
             m = (
-                f"Implementation version [{schema_version}] is not required to "
-                f" read/writesupported version [{supported_version}]."
+                f"Older implementation version [{schema_version}] is not required to "
+                f"read/write newer supported version [{supported_version}]."
             )
             # warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
@@ -77,13 +76,14 @@ def skip_incompatible_combinations(func):
         data_path = Path(os.path.join(resource_path_root, file_name))
         assert data_path.exists()
 
-        return func(self,
-                    implemented_version=schema_version,
-                    supported_version=supported_version,
-                    version_modules_by_version=version_modules_by_version,
-                    loader=loader,
-                    data_path=data_path
-                    )
+        return func(
+            self,
+            implemented_version=schema_version,
+            supported_version=supported_version,
+            version_modules_by_version=version_modules_by_version,
+            loader=loader,
+            data_path=data_path,
+        )
 
     return filter
 
