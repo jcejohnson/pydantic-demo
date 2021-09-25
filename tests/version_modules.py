@@ -2,6 +2,7 @@ import importlib
 import inspect
 import os
 import pkgutil
+import re
 from types import ModuleType
 from typing import Dict
 
@@ -16,6 +17,7 @@ class VersionModules:
     aktorz_model_path: str = os.path.dirname(inspect.getfile(schema_version))
     version_modules_by_name: Dict[str, ModuleType] = dict()
     version_modules_by_version: Dict[str, ModuleType] = dict()
+    version_prefix: str = schema_version.DEFAULT_PREFIX
 
     def __init__(self):
         def _has_model_class(name):
@@ -27,19 +29,25 @@ class VersionModules:
 
             name = m.name
 
-            if not (name.startswith(schema_version.DEFAULT_PREFIX) or _has_model_class(name)):
+            # Skip modules that are not version modules
+            if not name.startswith(self.version_prefix):
+                continue
+
+            # Skip version-specific utility modules
+            # e.g. -- v0_1_x
+            if not re.match("^.*[0-9]$", name):
+                continue
+
+            # Skip version modules that have no Model
+            if not _has_model_class(name):
                 continue
 
             module = importlib.import_module(f".{name}", package=schema_version.__package__)
             self.version_modules_by_name[name] = module
 
-            try:
-                version = getattr(module, "VERSION")
-                if version not in self.version_modules_by_version:
-                    self.version_modules_by_version[version] = self.version_modules_by_name[name]
-            finally:
-                # We will handle missing VERSION attributes in test_version_module_validity()
-                pass
+            version = getattr(module, "VERSION")
+            if version not in self.version_modules_by_version:
+                self.version_modules_by_version[version] = self.version_modules_by_name[name]
 
 
 CONFIG_DATA: VersionModules = VersionModules()

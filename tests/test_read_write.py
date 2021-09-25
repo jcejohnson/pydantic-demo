@@ -19,7 +19,6 @@ from aktorz.model import (  # isort:skip
     BaseVersionedModel,
     Exporter,
     Loader,
-    LoaderValidations,
     SchemaVersion,
     SUPPORTED_VERSIONS,
 )
@@ -171,7 +170,14 @@ class TestReadWrite(BaseTest):
         # that the raw input data and parsed model data are identical. The best we can do at
         # this level is ensure that the schema version matches what we expected to read.
 
-        assert data.schema_version == supported_version
+        if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
+            assert isinstance(data, BaseVersionedModel)
+            assert isinstance(data.schema_version, SchemaVersion)
+            assert data.schema_version == supported_version  # because update_version=False
+        else:
+            assert isinstance(data, BaseModel)
+            assert not isinstance(data.schema_version, SchemaVersion)
+            assert SchemaVersion.create(data.schema_version) == supported_version  # because update_version=False
 
         # Serialization to json should not throw any exceptions.
         as_json = data.json()  # Delegates to data.dict()
@@ -195,11 +201,11 @@ class TestReadWrite(BaseTest):
         input_data = loader.load(input=data_path, update_version=True)
         assert input_data.schema_version == implemented_version
 
+        assert isinstance(input_data, BaseModel)
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
             assert isinstance(input_data, BaseVersionedModel)
         else:
             assert not isinstance(input_data, BaseVersionedModel)
-        assert isinstance(input_data, BaseModel)
 
         # If the target version is missing fields that are present in the input version
         # then those will be dropped during the export. This is as intended because the
@@ -207,8 +213,25 @@ class TestReadWrite(BaseTest):
         # Exporter does this by tweaking BaseModel.Config.extra which affects _all_
         # subclasses of BaseModel. This is extremely not threadsafe.
         exporter = Exporter(version=supported_version)
+
+        # exporter.export() may internally create a subclass of Exporter and delegate
+        # to its export_model() method. We do not have direct access to this subclass
+        # instance.
         exported_data = exporter.export(input=input_data, update_version=False)
-        assert exported_data.schema_version == implemented_version
+        assert isinstance(exported_data, BaseModel)
+        if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
+            assert isinstance(exported_data, BaseVersionedModel)
+            assert isinstance(exported_data.schema_version, SchemaVersion)
+            assert exported_data.schema_version == implemented_version
+        else:
+            # v0.1.x Model modules must provide their own Exporter
+            custom_exporter = exporter.exporter()
+            assert isinstance(custom_exporter, Exporter)
+            assert type(custom_exporter) != Exporter
+            # These mirror the v0.2.0 assertions
+            assert not isinstance(exported_data, BaseVersionedModel)
+            assert isinstance(exported_data.schema_version, str)
+            assert SchemaVersion.create(exported_data.schema_version) == implemented_version
 
         # Now we use the original Loader (for the implemented version) to re-read the
         # data that we just exported to the supported version. Since exports are generally

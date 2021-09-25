@@ -133,17 +133,17 @@ class SchemaVersion(SchemaVersionBase):
 
     def __eq__(self, other):
         if not isinstance(other, SchemaVersion):
-            other = SchemaVersion(other)
+            other = SchemaVersion.create(other)
         return self.prefix == other.prefix and self.semver == other.semver
 
     def __gt__(self, other):
         if not isinstance(other, SchemaVersion):
-            other = SchemaVersion(other)
+            other = SchemaVersion.create(other)
         return self.prefix == other.prefix and self.semver >= other.semver
 
     def __lt__(self, other):
         if not isinstance(other, SchemaVersion):
-            other = SchemaVersion(other)
+            other = SchemaVersion.create(other)
         return self.prefix == other.prefix and self.semver < other.semver
 
     def __ne__(self, other):

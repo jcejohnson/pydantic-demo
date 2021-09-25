@@ -9,13 +9,16 @@ import warnings
 from enum import Enum, auto
 from pathlib import Path, PosixPath
 from types import ModuleType as BaseModuleType
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 
 from pydantic import Extra, FilePath, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
+if TYPE_CHECKING:
+    from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
+
 from .base_models import BaseModel, BaseVersionedModel
-from .schema_version import SchemaVersion
+from .schema_version import SchemaVersion, SchemaVersionBase
 
 # #### ModuleType Implementation
 
@@ -51,6 +54,7 @@ class ModuleType(BaseModuleType):
 class ImportExport:
     """Common behaviors for import (load) and Export (transmute)."""
 
+    schema_version_field: str = "schema_version"
     version: Union[SchemaVersion, str] = cast(SchemaVersion, None)
     module: ModuleType = cast(ModuleType, None)
     model: BaseVersionedModel = cast(BaseVersionedModel, None)
@@ -108,7 +112,7 @@ class ImportExport:
 
         # We cannot safely coerce the Model to subclass BaseVersionedModel but we can
         # at least ensure it has the required schema_version field.
-        assert "schema_version" in model.__fields__
+        assert values["schema_version_field"] in model.__fields__
 
         return model
 
@@ -129,14 +133,10 @@ class ImportExport:
         if version:
             return cls(version=SchemaVersion.create(version))
 
-        assert issubclass(type(other), cls)
+        assert issubclass(cls, type(other))
         assert other.module
         assert other.model
         assert isinstance(other.module, BaseModuleType)
-
-        # We cannot assert that model is a BaseVersionedModel but we can assert
-        # that is has a schema_version field.
-        assert "schema_version" in other.model.__fields__
 
         if isinstance(other.model, BaseVersionedModel):
             return cls(
@@ -159,12 +159,12 @@ class ImportExport:
         """
 
         if isinstance(model, dict):
-            return SchemaVersion.create(model["schema_version"])
+            return SchemaVersion.create(model[self.schema_version_field])
 
-        if isinstance(model.schema_version, SchemaVersion):
-            return model.schema_version
+        if isinstance(model[self.schema_version_field], SchemaVersion):
+            return model[self.schema_version_field]
 
-        return SchemaVersion.create(model.schema_version)
+        return SchemaVersion.create(model[self.schema_version_field])
 
     def set_schema_version(self, model):
         """
@@ -223,7 +223,7 @@ class Loader(ImportExport):
         TODO: Document this properly.
 
         """
-        do_load = self.load_input if (type(self) == LoaderType) else self.loader().load_input
+        do_load = self.loader().load_input
         return do_load(input=input, validate_version=validate_version, update_version=update_version)
 
     def loader(self):
@@ -323,7 +323,7 @@ class Loader(ImportExport):
 
         # Delegate to SchemaVersion.create() to convert (if necessary) the implementation module's
         # VERSION attribute to a SchemaVersion.
-        module_version = SchemaVersion.create(version=self.module.VERSION)
+        module_version = SchemaVersion.create(version=cast(Union[SchemaVersionBase, str], self.module.VERSION))
 
         if validate_version == LoaderValidations.NONE:
             return True
@@ -424,7 +424,7 @@ class Exporter(ImportExport):
         TODO: Document this properly.
 
         """
-        do_export = self.export_model if (type(self) == ExporterType) else self.exporter().export_model
+        do_export = self.exporter().export_model
         return do_export(input=input, update_version=update_version)
 
     def exporter(self):
@@ -473,7 +473,10 @@ class Exporter(ImportExport):
             input = input.copy(deep=True)
 
         # Convert the input to a dict and manipulate it (if necessary) to make it compatible with the target Model
-        raw_data = self.make_compatible(data=input)
+        raw_data = self.make_compatible(model=input)
+        print("")
+        print(f"raw_data [{type(raw_data)}] ")
+        print(f"raw_data['{self.schema_version_field}'] [{raw_data[self.schema_version_field]}] ")
 
         # Delegate to pydantic to create a Model from the raw data dict.
         model = self.materialze_model(data=raw_data)
@@ -483,9 +486,9 @@ class Exporter(ImportExport):
 
         return model
 
-    def make_compatible(self, data: Union[BaseVersionedModel, BaseModel]) -> dict:
+    def make_compatible(self, model: Union[BaseVersionedModel, BaseModel]) -> dict:
         """
-        Return a dict representation of `data` that is compatible with self.version.
+        Return a dict representation of `model` that is compatible with self.version.
 
         Note that the `schema_version` element of the returned dict should not
         be updated by this method. That will be done by set_schema_version()
@@ -498,7 +501,7 @@ class Exporter(ImportExport):
         order to make it compatible with the target Model's parse_obj().
         """
 
-        return data.dict(include=self.get_includes(), exclude=self.get_excludes())
+        return model.dict(include=self.get_includes(), exclude=self.get_excludes())
 
     def get_includes(self) -> Union["AbstractSetIntStr", "MappingIntStrAny"]:
         return cast(Union["AbstractSetIntStr", "MappingIntStrAny"], None)
@@ -526,6 +529,9 @@ class Exporter(ImportExport):
         BaseModel.Config.extra = Extra.ignore
         model = self.model.parse_obj(data)
         BaseModel.Config.extra = extra
+        print("")
+        print(f"model [{type(model)}] ")
+        print(f"model.schema_version [{model.schema_version}] ")
 
         return model
 

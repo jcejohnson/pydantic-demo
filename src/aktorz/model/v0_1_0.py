@@ -1,37 +1,9 @@
-from typing import Dict, List, NewType, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from .base_model import BaseModel
+from .base_models import BaseModel
+from .v0_1_x import ActorId, Exporter, Loader, MovieId, MovieTitle, PersonId, SchemaVersion, Year  # noqa: F401
 
-# Blank space to align with the other implementations.
-#
-# #### Constants
-
-# 0.2.0 -> from . import SchemaVersion
-SchemaVersion = NewType("SchemaVersion", str)
 VERSION = SchemaVersion("v0.1.0")
-
-# #### Data types
-
-# QUERY: Are there any reasonable constraints for a movie title?
-MovieTitle = NewType("MovieTitle", str)
-
-# https://en.wikipedia.org/wiki/History_of_film
-#
-# 0.1.0 : int
-Year = NewType("Year", int)
-
-# Object identifiers, keys in the json maps / python dicts.
-
-#
-# 0.1.0 : str
-MovieId = NewType("MovieId", str)
-
-#
-# 0.1.0 : str
-PersonId = NewType("PersonId", str)
-
-# 0.1.0 : PersonId
-ActorId = NewType("ActorId", PersonId)
 
 # #### Model classes
 
