@@ -60,43 +60,6 @@ class Test_0_1_2(BaseVersionModuleTest):  # noqa: N801
 
     # Tests...
 
-    # Every concrete test class needs this test to ensure that we don't
-    # have typos in our constants.
-    def test_constants(self, model_module, schema_version, test_file_basename):
-        """
-        Verify that our class constants are correctly provided by
-        BaseTest's fixtures.
-        """
-        assert model_module == self.__class__.MODEL_MODULE
-        assert schema_version == self.__class__.VERSION
-        assert test_file_basename == self.__class__.TEST_FILE
-
-        assert VERSION == self.__class__.VERSION
-
-    def test_basic_data(self, actor_data_json: str, test_data_dict: dict):
-        """
-        Test loading of v0.1.0 data from a json string into the model.
-        Some concrete test classes will (and some will not) have have a similar test.
-        """
-
-        schema_version = self.__class__.VERSION
-        loader = Loader(version=schema_version)
-
-        # Loader.load() returns a BaseVersionedModel.
-        # That will trigger mypy when we try to get the `actors` property from it
-        # since BaseVersionedModel has no such property.
-        # Casting load's return value silences mypy
-        model = cast(Any, loader.load(input=actor_data_json))
-
-        assert model.schema_version == schema_version
-        assert isinstance(model.schema_version, str)
-
-        # In v0.1.2 model.actors becomes an ActorsById instance
-        # which is dict-like and responds to len()
-        assert len(model.actors) == 2
-
-        assert model.actors["charlie_chaplin"].birth_year == 1889
-
     def test_character_full_name(self, request, actor_data_path: FilePath):
         """Verify that cast character name is handled properly"""
 

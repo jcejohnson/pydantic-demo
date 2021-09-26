@@ -1,6 +1,8 @@
 import json
 import os
+import sys
 import warnings
+from typing import Any, cast
 
 import pytest
 from pydantic import FilePath, ValidationError
@@ -94,6 +96,58 @@ class BaseVersionModuleTest(BaseTest):
         return json.dumps(actor_data_dict)
 
     # Tests common to all versions
+
+    # Every concrete test class needs this test to ensure that we don't
+    # have typos in our constants.
+    def test_constants(self, model_module, schema_version, actor_data_path):
+        """
+        Verify that our class constants are correctly provided by
+        BaseTest's fixtures.
+        """
+
+        # Verify that self.__class__.MODEL_MODULE is a legit module.
+        # If this fails either self.__class__.MODEL_MODULE is incorrect or
+        # the test module did not import the implementation module.
+        assert model_module in sys.modules
+
+        # This is the VERSION constant in the model implementation module.
+        implemented_version = sys.modules[model_module].VERSION
+
+        # Verify that self.__class__.VERSION matches the implementation's VERSION.
+        assert schema_version == implemented_version
+
+        # This is the VERSION imported into the test class' module
+        version_under_test = sys.modules[self.__class__.__module__].VERSION
+
+        # Be sure that the test class' VERSION matches the implementation's VERSION.
+        assert version_under_test == implemented_version
+
+        # Verify that the test data exists
+        assert os.path.exists(actor_data_path)
+
+    def test_basic_data(self, actor_data_json: str, test_data_dict: dict):
+        """
+        Test loading of data from a json string into the model.
+        Some concrete test classes will (and some will not) have have a similar test.
+        """
+
+        schema_version = self.__class__.VERSION
+        loader = Loader(version=schema_version)
+
+        # Loader.load() returns a BaseVersionedModel.
+        # That will trigger mypy when we try to get the `actors` property from it
+        # since BaseVersionedModel has no such property.
+        # Casting load's return value silences mypy
+        model = cast(Any, loader.load(input=actor_data_json))
+
+        assert model.schema_version == schema_version
+        assert isinstance(model.schema_version, str)
+
+        # In v0.1.3 model.actors becomes an ActorsById instance
+        # which is dict-like and responds to len()
+        assert len(model.actors) == 2
+
+        assert model.actors["charlie_chaplin"].birth_year == 1889
 
     def test_schema_version(self, schema_version):
 
