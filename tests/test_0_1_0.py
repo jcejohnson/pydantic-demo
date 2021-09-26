@@ -31,6 +31,8 @@ class Test_0_1_0(BaseVersionModuleTest):  # noqa: N801
         """
 
         schema_version = self.__class__.VERSION
+        assert schema_version == VERSION  # Mostly to silence flake8
+
         loader = Loader(version=schema_version)
         model = loader.load(input=actor_data_json)
 

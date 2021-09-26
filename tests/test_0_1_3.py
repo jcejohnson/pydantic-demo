@@ -1,16 +1,13 @@
-from .base_test import BaseVersionModuleTest
-import json
-import os
-from pathlib import PosixPath
 from typing import Any, cast
 
-import pytest
-from pydantic import FilePath, ValidationError
+from pydantic import FilePath
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
 from aktorz.model import Loader
 from aktorz.model.v0_1_3 import VERSION
+
+from .base_test import BaseVersionModuleTest
 
 
 class Test_0_1_3(BaseVersionModuleTest):  # noqa: N801
