@@ -6,8 +6,10 @@ SUPPORTED_VERSIONS = [
     # 2021-09-15 21:44:53.700238
     "v0.1.2",
     # 2021-09-15 22:58:15.605465
-    # Current version
-    "v0.1.3-rc1",
+    'v0.1.3-rc1',
+# 2021-09-26 18:30:06.899116
+# Current version
+    "v0.1.3",
 ]
 
 PREVIOUS_VERSION = SUPPORTED_VERSIONS[-2]
