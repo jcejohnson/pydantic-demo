@@ -20,7 +20,7 @@ class Test_0_1_3(BaseVersionModuleTest):  # noqa: N801
 
     MODEL_MODULE = "aktorz.model.v0_1_3"
     TEST_FILE = "actor-data-0.1.3.json"
-    VERSION = "v0.1.3-rc1"
+    VERSION = "v0.1.3"
 
     # Tests...
 

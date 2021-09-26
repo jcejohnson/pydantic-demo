@@ -5,7 +5,7 @@ from pydantic import Field, conint, validator
 from .base_model import BaseDictModel, BaseModel
 from .v0_1_x import ActorId, Exporter, Loader, MovieId, MovieTitle, PersonId, SchemaVersion, Year  # noqa: F401
 
-VERSION = SchemaVersion("v0.1.3-rc1")
+VERSION = SchemaVersion("v0.1.3")
 
 
 # #### Model classes
