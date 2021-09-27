@@ -217,6 +217,12 @@ class TestReadWrite(BaseTest):
         # exporter.export() may internally create a subclass of Exporter and delegate
         # to its export_model() method. We do not have direct access to this subclass
         # instance.
+
+        if (os.environ.get("TOX_ACTIVE", "false").upper() == "TRUE") and (implemented_version == supported_version):
+            with pytest.raises(UserWarning) as exc_info:
+                exported_data = exporter.export(input=input_data, update_version=False)
+            return
+
         exported_data = exporter.export(input=input_data, update_version=False)
         assert isinstance(exported_data, BaseModel)
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
