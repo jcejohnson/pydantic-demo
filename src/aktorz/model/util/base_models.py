@@ -8,6 +8,8 @@ import copy
 from .base_model import BaseModel
 from .schema_version import SchemaVersionBase
 
+# FIXME: Improve BaseDictModel based on test_root_as_dict
+
 
 class BaseDictModel(BaseModel):
     """
@@ -48,6 +50,9 @@ class BaseDictModel(BaseModel):
     # v0.1.2
     def __len__(self):
         return len(self.__root__)
+
+
+# FIXME: Introduct BaseListModel based on test_root_as_list
 
 
 class BaseVersionedModel(BaseModel):
