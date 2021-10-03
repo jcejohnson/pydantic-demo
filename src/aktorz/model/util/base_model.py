@@ -13,7 +13,6 @@ BaseDictModel
 
 See also: .base_models
 """
-import copy
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
@@ -61,44 +60,3 @@ class BaseModel(PydanticBaseModel):
         if hasattr(self, key):
             delattr(self, key)
         return value
-
-
-class BaseDictModel(BaseModel):
-    """
-    Extends BaseModel specifically for classes having a __root_ property.
-    Modifies dict-like behavior to delegate to __root_.
-
-    Added in v0.1.2
-    """
-
-    # Not yet required.
-    # def keys(self):
-    #     return self.__root__.keys()
-
-    # Not yet required.
-    # def items(self):
-    #     return self.__root__.items()
-
-    # Not yet required.
-    # def values(self):
-    #     return self.dict().values()
-
-    # Not yet required.
-    # def __iter__(self):
-    #     return iter(self.__root__)
-
-    # Not yet required.
-    # def __getattr__(self, item):
-    #     return self.__root__[item]
-
-    # v0.1.2
-    def __deepcopy__(self, memo):
-        return copy.deepcopy(self.__root__)
-
-    # v0.1.2
-    def __getitem__(self, item):
-        return self.__root__[item]
-
-    # v0.1.2
-    def __len__(self):
-        return len(self.__root__)

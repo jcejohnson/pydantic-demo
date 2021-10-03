@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from pydantic import conint, validator
 
-from .base_model import BaseModel
+from . import BaseModel
 from .v0_1_x import ActorId, Exporter, Loader, MovieId, MovieTitle, PersonId, SchemaVersion, Year  # noqa: F401
 
 VERSION = SchemaVersion("v0.1.1")

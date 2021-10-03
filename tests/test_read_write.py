@@ -219,7 +219,7 @@ class TestReadWrite(BaseTest):
         # instance.
 
         if (os.environ.get("TOX_ACTIVE", "false").upper() == "TRUE") and (implemented_version == supported_version):
-            with pytest.raises(UserWarning) as exc_info:
+            with pytest.raises(UserWarning):
                 exported_data = exporter.export(input=input_data, update_version=False)
             return
 

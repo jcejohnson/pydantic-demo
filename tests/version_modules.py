@@ -6,7 +6,7 @@ import re
 from types import ModuleType
 from typing import Dict
 
-from aktorz.model import schema_version
+from aktorz.model import DEFAULT_VERSION_PREFIX, v0_1_x
 
 
 class VersionModules:
@@ -14,14 +14,14 @@ class VersionModules:
     Helper class for finding modules that implement versioned models.
     """
 
-    aktorz_model_path: str = os.path.dirname(inspect.getfile(schema_version))
+    aktorz_model_path: str = os.path.dirname(inspect.getfile(v0_1_x))
     version_modules_by_name: Dict[str, ModuleType] = dict()
     version_modules_by_version: Dict[str, ModuleType] = dict()
-    version_prefix: str = schema_version.DEFAULT_PREFIX
+    version_prefix: str = DEFAULT_VERSION_PREFIX
 
     def __init__(self):
         def _has_model_class(name):
-            return hasattr(importlib.import_module(f".{name}", package=schema_version.__package__), "Model")
+            return hasattr(importlib.import_module(f".{name}", package=v0_1_x.__package__), "Model")
 
         self.version_modules_by_name = dict()
         self.version_modules_by_version = dict()
@@ -42,7 +42,7 @@ class VersionModules:
             if not _has_model_class(name):
                 continue
 
-            module = importlib.import_module(f".{name}", package=schema_version.__package__)
+            module = importlib.import_module(f".{name}", package=v0_1_x.__package__)
             self.version_modules_by_name[name] = module
 
             version = getattr(module, "VERSION")

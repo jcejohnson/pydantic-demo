@@ -87,14 +87,16 @@ class ImportExport:
         schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
+        model_package = __package__.replace(".util", "")
+
         try:
-            module = importlib.import_module(f".{schema_version.prefix}{version}", package=__package__)
+            module = importlib.import_module(f".{schema_version.prefix}{version}", package=model_package)
         except ModuleNotFoundError as e1:
             final_version = str(schema_version.semver.finalize_version()).replace(".", "_")
             if final_version == version:
                 raise e1
             try:
-                module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=__package__)
+                module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=model_package)
             except ModuleNotFoundError as e2:
                 raise ModuleNotFoundError(f"{e1} / {e2}")
 
