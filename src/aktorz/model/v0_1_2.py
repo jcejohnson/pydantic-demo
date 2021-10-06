@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from pydantic import conint, validator
 
@@ -63,6 +63,21 @@ class CastMember(BaseModel):
         if full_name:
             return full_name
         raise ValueError("Either `name` or `first/last_name` must be provided.")
+
+    # Added after 0.1.3 due to changes to DictLikeMixin.__get_item__.
+    @classmethod
+    def validate(cls: Type["Model"], value: Any) -> "Model":
+        # validate_name() is sufficient to set the `name` field but it does not add
+        # `name` to the model instance's __fields_set__. And there doesn't appear to
+        # be any way to get the model instance within validate_name(). However, we
+        # can wrap the default validate() method and update __fields_set__ after the
+        # default model validation.
+        # Note that if we don't add `name` to __fields_set__ DictLikeMixin will not
+        # recognize the field when it is set by validate_name().
+        model = super().validate(value)
+        assert model.name, f"{model} expected 'name' to be set by validate_name()."
+        model.__fields_set__.add("name")
+        return model
 
 
 # Added in v0.1.2
