@@ -6,8 +6,8 @@ make sense to belong to .base_model
 from .base_model import BaseModel
 from .schema_version import SchemaVersionBase
 
-
 # This may need to become a mixin so that it can be added to either BaseModel or CommentableBaseModel
+
 
 class BaseVersionedModel(BaseModel):
     """

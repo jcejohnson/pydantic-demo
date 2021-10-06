@@ -1,15 +1,16 @@
-from .base_model_commentable import CommentableBaseModel
-from .dict_like_mixin import DictLikeMixin
-
 from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
-class BaseModel(DictLikeMixin, PydanticBaseModel):
+from .base_model_commentable import CommentableBaseModel
+from .dict_like_mixin import DictLikeMixin
 
+
+class BaseModel(DictLikeMixin, PydanticBaseModel):
     class Config:
         extra: str = Extra.forbid
+
 
 class BaseDictModel(DictLikeMixin, PydanticBaseModel):
     """
@@ -33,7 +34,7 @@ class BaseDictModel(DictLikeMixin, PydanticBaseModel):
     """
 
     def __getattr__(self, item: Any):
-        if item == '__deepcopy__':
+        if item == "__deepcopy__":
             return None
         self.__validate_item__(item)
         return self.__root__[item]

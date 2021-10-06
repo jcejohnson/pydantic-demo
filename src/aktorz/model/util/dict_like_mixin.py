@@ -22,7 +22,7 @@ class DictLikeMixin:
 
     def __getitem__(self, key: str):
 
-        if key in self.__fields_set__ or self.__fields__.get(key,None):
+        if key in self.__fields_set__:
             try:
                 return getattr(self, key)
             except AttributeError as e:
@@ -30,7 +30,7 @@ class DictLikeMixin:
 
         try:
             field_key = next(f for f in self.__fields__ if self.__fields__[f].alias == key)
-            if field_key in self.__fields_set__ or self.__fields__.get(field_key,None):
+            if field_key in self.__fields_set__:
                 try:
                     return getattr(self, field_key)
                 except AttributeError as e:
@@ -161,4 +161,3 @@ class DictLikeMixin:
 
     def items(self):
         return [(self.__fields__[key].alias, getattr(self, key)) for key in self.__fields_set__]
-

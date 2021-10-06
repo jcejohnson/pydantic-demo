@@ -2,6 +2,7 @@ import re
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, root_validator
+
 from .dict_like_mixin import DictLikeMixin
 
 COMMENT_REGEX = r"^(.*[_-])?comment$"
