@@ -17,7 +17,8 @@ from pydantic.dataclasses import dataclass
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
 
-from .base_models import BaseModel, BaseVersionedModel
+from .base_model import BaseModel
+from .base_model_versioned import BaseVersionedModel
 from .schema_version import SchemaVersion, SchemaVersionBase
 
 # #### ModuleType Implementation

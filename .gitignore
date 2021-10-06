@@ -28,3 +28,4 @@ log.txt
 
 # Tests that aren't ready yet
 tests/x_*
+.pypirc

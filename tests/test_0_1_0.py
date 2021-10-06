@@ -157,9 +157,9 @@ class Test_0_1_0(BaseVersionModuleTest):  # noqa: N801
         # #### Add (forbidden)
 
         # But we cannot add arbitrary elements as we could with a dict.
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(KeyError) as exc_info:
             model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"]["nickname"] = "Toretto"
-        assert str(exc_info.value) == '"CastMember" object has no field "nickname"'
+        assert str(exc_info.value) == "'nickname'"
 
         # Remove
 
@@ -170,7 +170,7 @@ class Test_0_1_0(BaseVersionModuleTest):  # noqa: N801
         assert "name" not in model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"]
         with pytest.raises(AttributeError) as exc_info:  # type: ignore
             assert model.actors["dwayne_johnson"].movies[0].cast["dominic_toretto"].name == "Toretto"
-        assert str(exc_info.value) == "'CastMember' object has no attribute 'name'"
+        assert str(exc_info.value) == "name"
         # Neither of these wil throw an exception even though the dominic_toretto CastMember
         # no longer has its required `name` property.
         model["actors"]["dwayne_johnson"]["movies"][0]["cast"]["dominic_toretto"].dict()

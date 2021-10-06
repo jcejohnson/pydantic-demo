@@ -4,10 +4,15 @@
 
 self=$(basename $0)
 
+for python in python3.8 python3.9
+do
+  which ${python} && break
+done
+
 if [ ! -d venv ] ; then
   (
     set -x
-    python3.8 -m venv venv
+    ${python} -m venv venv
     venv/bin/pip install --upgrade pip
     venv/bin/pip install pip-tools
   )
@@ -30,7 +35,7 @@ case ${self} in
     ;;
 
   tox.sh)
-    [ -x venv/bin/tox ] || (set -x ; venv/bin/pip install tox)
+    [ -x venv/bin/tox ] || (set -x ; venv/bin/pip install -r dev-requirements.txt)
     exec venv/bin/tox "$@"
     ;;
 

@@ -1,62 +1,62 @@
-"""
-This Module provides enhanced pydantic BaseModel classes.
+from .base_model_commentable import CommentableBaseModel
+from .dict_like_mixin import DictLikeMixin
 
-BaseModel
-
-    Extends pydantic.BaseModel to add dict-like behavior and a Config class
-    forbidding extra properties.
-
-BaseDictModel
-
-    Extends BaseModel specifically for classes having a __root_ property.
-    Modifies dict-like behavior to delegate to __root_.
-
-See also: .base_models
-"""
+from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
+class BaseModel(DictLikeMixin, PydanticBaseModel):
 
-class BaseModel(PydanticBaseModel):
-    """
-    Extends pydantic.BaseModel to add dict-like behavior and a Config class
-    forbidding extra properties.
-
-    Added in v0.1.0
-    """
-
-    # v0.1.0
     class Config:
         extra: str = Extra.forbid
 
-    # Added in v0.1.2
-    def __iter__(self):
-        return iter(self.dict())
+class BaseDictModel(DictLikeMixin, PydanticBaseModel):
+    """
+    Baseclass for a pydantic custom root model.
+    Adds dict-like behavior but not data (assumes self.__root__ is Mappable).
 
-    # v0.1.0
-    def __getitem__(self, key):
-        return getattr(self, key)
+    Subclasses can override ___validate_item___ to validate keys and/or
+    __validate_value__ to validate value types.
 
-    # v0.1.0
-    def __setitem__(self, key, value):
-        return setattr(self, key, value)
+    I'm not using @validate_arguments here because we want the baseclass to
+    support any types for key/value. If you want to validate the items/values
+    you can use @validate_arguments on the __validate_*__ methods of your
+    subclass.
 
-    # v0.1.0
-    def items(self):
-        return self.dict().items()
+    e.g. --
 
-    # Not yet required.
-    # def keys(self):
-    #     return self.dict().keys()
+        # Ensure that the items (keys) are a FooBarOrComment
+        @validate_arguments
+        def __validate_item__(self, item: FooBarOrComment):
+            return True
+    """
 
-    # Not yet required.
-    # def values(self):
-    #     return self.dict().values()
+    def __getattr__(self, item: Any):
+        if item == '__deepcopy__':
+            return None
+        self.__validate_item__(item)
+        return self.__root__[item]
 
-    # v0.1.0
-    def pop(self, key):
-        value = self[key]
-        if hasattr(self, key):
-            delattr(self, key)
-        return value
+    def __len__(self):
+        return len(self.__root__)
+
+    def __setattr__(self, item: Any, value):
+        self.__validate_item__(item)
+        self.__validate_value__(item)
+        self.__root__[item] = value
+
+    def __getitem__(self, item: Any):
+        self.__validate_item__(item)
+        return self.__root__[item]
+
+    def __setitem__(self, item: Any, value):
+        self.__validate_item__(item)
+        self.__validate_value__(item)
+        self.__root__[item] = value
+
+    def __validate_item__(self, item: Any):
+        return True
+
+    def __validate_value__(self, item: Any):
+        return True

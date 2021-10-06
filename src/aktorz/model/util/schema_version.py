@@ -12,7 +12,7 @@ from .base_model import BaseModel
 
 DEFAULT_PREFIX = "v"
 
-SCHEMA_VERSION_REGEX = re.compile(
+VERSION_REGEX = re.compile(
     r"""
         ^
         (?P<prefix>[^\d]+)?
@@ -125,7 +125,7 @@ class SchemaVersion(SchemaVersionBase):
         """Return a dict containing the prefix and semver of a SchemaVersionBase or str."""
         if isinstance(schema_version, SchemaVersionBase):
             return {"prefix": schema_version.prefix, "semver": str(schema_version.semver)}
-        match = SCHEMA_VERSION_REGEX.match(str(schema_version))
+        match = VERSION_REGEX.match(str(schema_version))
         parts = match.groupdict()  # type: ignore
         prefix = parts["prefix"] or default_prefix
         semver = parts["semver"] or schema_version
