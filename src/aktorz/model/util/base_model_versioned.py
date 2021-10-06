@@ -7,6 +7,8 @@ from .base_model import BaseModel
 from .schema_version import SchemaVersionBase
 
 
+# This may need to become a mixin so that it can be added to either BaseModel or CommentableBaseModel
+
 class BaseVersionedModel(BaseModel):
     """
     Provides a schema_version property and a custom dict() method that will
