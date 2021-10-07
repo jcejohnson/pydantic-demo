@@ -1,0 +1,25 @@
+{
+    "title": "VersionedModel",
+    "description": "Provides a schema_version property and a custom dict() method that will\nrepresent schema_version as a string.\n\nAdded in v0.1.2",
+    "type": "object",
+    "properties":
+    {
+        "schema_version":
+        {
+            "title": "Schema Version",
+            "comment": "A string representation of <class 'aktorz.model.util.schema_version.SchemaVersion'>. Default prefix is [v].",
+            "pattern": "^(?P<prefix>[^\\d]+)?(?P<semver>((?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?))$"
+        },
+        "name":
+        {
+            "title": "Name",
+            "type": "string"
+        }
+    },
+    "required":
+    [
+        "schema_version",
+        "name"
+    ],
+    "additionalProperties": false
+}

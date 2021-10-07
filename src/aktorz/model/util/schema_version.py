@@ -16,7 +16,9 @@ VERSION_REGEX = re.compile(
     r"""
         ^
         (?P<prefix>[^\d]+)?
-        (?P<semver>\d[\d\.].*)
+        # See https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        (?P<semver>((?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?))
+        $
     """,
     re.VERBOSE,
 )
@@ -197,3 +199,10 @@ class SchemaVersion(SchemaVersionBase):
         if the_other.semver > self.semver:
             return False
         return True
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(
+            comment=f"A string representation of {cls}. Default prefix is [{DEFAULT_PREFIX}].",
+            pattern="".join([re.sub(r"#.*", "", x).strip() for x in VERSION_REGEX.pattern.split("\n")]),
+        )
