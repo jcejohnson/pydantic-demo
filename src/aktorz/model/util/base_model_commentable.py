@@ -9,7 +9,7 @@ COMMENT_REGEX = r"^(.*[_-])?comment$"
 
 
 def is_comment(thing: str) -> bool:
-    return re.match(COMMENT_REGEX, thing)
+    return re.match(COMMENT_REGEX, thing) is not None
 
 
 # This doesn't work as a mixin. I don't know why.
@@ -29,7 +29,8 @@ class CommentableBaseModel(PydanticBaseModel):
         raise ValueError(f'"{self.__class__.__name__}" object has no field "{field}"')
 
     @root_validator
-    def check_extra_fields(cls, values):
+    @classmethod
+    def check_extra_fields(cls, values: dict):
         """Make sure extra fields are only comments."""
 
         for k, v in list(values.items()):

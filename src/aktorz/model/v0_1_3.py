@@ -80,7 +80,7 @@ class CastMember(BaseModel):
 
     # Added after 0.1.3 due to changes to DictLikeMixin.__get_item__.
     @classmethod
-    def validate(cls: Type["Model"], value: Any) -> "Model":
+    def validate(cls: Type["CastMember"], value: Any) -> "CastMember":
         # validate_name() is sufficient to set the `name` field but it does not add
         # `name` to the model instance's __fields_set__. And there doesn't appear to
         # be any way to get the model instance within validate_name(). However, we

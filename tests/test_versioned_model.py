@@ -3,11 +3,10 @@ from typing import Union
 
 import pytest
 from pydantic import validator
-from semver import VersionInfo as Version  # type: ignore
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
-from aktorz.model import BaseModel, BaseVersionedModel, SchemaVersion, SemVer
+from aktorz.model import BaseModel, BaseVersionedModel, SchemaVersion
 
 
 class VersionedThing(BaseModel):

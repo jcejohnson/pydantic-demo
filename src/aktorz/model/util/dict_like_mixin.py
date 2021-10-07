@@ -25,7 +25,7 @@ class DictLikeMixin:
         if key in self.__fields_set__:
             try:
                 return getattr(self, key)
-            except AttributeError as e:
+            except AttributeError:
                 raise KeyError(key)
 
         try:
@@ -33,7 +33,7 @@ class DictLikeMixin:
             if field_key in self.__fields_set__:
                 try:
                     return getattr(self, field_key)
-                except AttributeError as e:
+                except AttributeError:
                     raise KeyError(key)
 
         except StopIteration:

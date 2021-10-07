@@ -3,7 +3,6 @@ from typing import Any
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
-from .base_model_commentable import CommentableBaseModel
 from .dict_like_mixin import DictLikeMixin
 
 
