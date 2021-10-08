@@ -8,7 +8,9 @@ from pydantic import validator
 from .base_model import BaseModel
 from .schema_version import SchemaVersion
 
-# This may need to become a mixin so that it can be added to either BaseModel or CommentableBaseModel
+# This may need to become a mixin so that it can be added to either BaseModel or CommentableBaseModel.
+# Or maybe its base should be CommentableBaseModel.
+# TBD
 
 
 class BaseVersionedModel(BaseModel):

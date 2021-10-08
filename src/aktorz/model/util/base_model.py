@@ -4,14 +4,14 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
 from .dict_like_mixin import DictLikeMixin
+from .validation_mixin import ValidationMixin
 
-
-class BaseModel(DictLikeMixin, PydanticBaseModel):
+class BaseModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):
     class Config:
         extra: str = Extra.forbid
 
 
-class BaseDictModel(DictLikeMixin, PydanticBaseModel):
+class BaseDictModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):
     """
     Baseclass for a pydantic custom root model.
     Adds dict-like behavior but not data (assumes self.__root__ is Mappable).

@@ -4,6 +4,7 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, root_validator
 
 from .dict_like_mixin import DictLikeMixin
+from .validation_mixin import ValidationMixin
 
 COMMENT_REGEX = r"^(.*[_-])?comment$"
 
@@ -15,7 +16,7 @@ def is_comment(thing: str) -> bool:
 # This doesn't work as a mixin. I don't know why.
 
 
-class CommentableBaseModel(PydanticBaseModel):
+class CommentableBaseModel(ValidationMixin, PydanticBaseModel):
     class Config:
         extra = Extra.allow
 
