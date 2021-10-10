@@ -4,7 +4,7 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, root_validator
 
 from .dict_like_mixin import DictLikeMixin
-from .validation_mixin import ValidationMixin  # type: ignore
+from .validation_mixin import ValidationMixin
 
 COMMENT_REGEX = r"^(.*[_-])?comment$"
 

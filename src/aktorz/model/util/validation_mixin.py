@@ -1,5 +1,3 @@
-# type: ignore
-
 from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 from pydantic import BaseModel
@@ -18,17 +16,16 @@ class ValidationMixin(object):
     """
 
     @classmethod
-    def validate(cls: Type["Model"], value: Any) -> Type["Model"]:
+    def validate(cls: Type["Model"], value: Any) -> "Model":  # type: ignore
+        return getattr(cls, "validate_self")._validate_self_(value)
+
+    @classmethod
+    def validate_self(cls, value: Any, **dict_kwargs) -> "Model":
+        # Similar to validate() but lets us customize the dict representation of `value`.
         if isinstance(value, cls):
             # Create, validate and return a new instance from the dict representation of `value`.
             # raises ValidationError if not.
-            new_instance = cls(**value.dict())
-            return super().validate(new_instance)
-        return super().validate(value)
-
-    @classmethod
-    def validate_self(cls: Type["Model"], value: BaseModel, **dict_kwargs) -> Type["Model"]:
-        # Similar to validate() but lets us customize the dict representation of `value`.
+            new_instance = getattr(cls, "parse_obj").value.dict(**dict_kwargs)
+            value = new_instance
         assert isinstance(value, cls)
-        new_instance = cls(**value.dict(**dict_kwargs))
-        return super().validate(new_instance)
+        return getattr(super(), "validate").validate(value)

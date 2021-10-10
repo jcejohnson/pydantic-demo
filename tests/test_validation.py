@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Type, TypeVar
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from aktorz.model.util.validation_mixin import ValidationMixin  # type: ignore
+from aktorz.model.util.validation_mixin import ValidationMixin
 
 if TYPE_CHECKING:
     Model = TypeVar("Model", bound="BaseModel")
