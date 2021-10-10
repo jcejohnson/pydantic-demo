@@ -404,7 +404,6 @@ class Exporter(ImportExport):
     silence_identical_versions_warning: bool = False
     ignore_extra: bool = True
 
-    @validate_arguments
     def export(
         self,
         *,
@@ -427,6 +426,14 @@ class Exporter(ImportExport):
         TODO: Document this properly.
 
         """
+
+        # We cannot use @validate_arguments because `input` may be a subclass
+        # of BaseModel and we explicitly disallow extra fields.
+        assert (
+            isinstance(input, (BaseVersionedModel, BaseModel)),
+            f"{type(self)}.export() expected `input` type [BaseVersionedModel, BaseModel] got [{type(input)}]",
+        )
+
         do_export = self.exporter().export_model
         return do_export(input=input, update_version=update_version)
 
