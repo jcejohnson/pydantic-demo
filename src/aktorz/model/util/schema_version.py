@@ -33,8 +33,10 @@ class SemVer(Version):
 
     NONE = Version(0, 0, 0)
 
-    def __init__(self, version, *args, **kwargs):
-        if isinstance(version, Version):
+    def __init__(self, version=None, *args, **kwargs):
+        if version is None:
+            super().__init__(*args, **kwargs)
+        elif isinstance(version, Version):
             version = version.to_dict()
             version.update(kwargs)
             super().__init__(**version)
@@ -73,14 +75,17 @@ class SchemaVersionBase(BaseModel):
 
     @validator("semver")
     @classmethod
-    def validate_version(cls, v: str):
+    def validate_version(cls, v: Union[SemVer, str]):
         """
         This validator ensures that the semver property will always be a
         SemVer instance.
         """
-        if not Version.isvalid(v):
-            raise ValueError(f"[{v}] is not a valid semver.")
-        return str(Version.parse(v))
+        assert (isinstance(v, (str, SemVer)), f"{cls}.validate_version() expected [SemVer, str] got [{type(v)}]")
+
+        if isinstance(v, str):
+            return SemVer(version=v)
+
+        return v
 
 
 class SchemaVersion(SchemaVersionBase):
