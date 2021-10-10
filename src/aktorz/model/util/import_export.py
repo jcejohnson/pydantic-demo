@@ -429,7 +429,7 @@ class Exporter(ImportExport):
 
         # We cannot use @validate_arguments because `input` may be a subclass
         # of BaseModel and we explicitly disallow extra fields.
-        assert (
+        assert (  # type: ignore # noqa: F631
             isinstance(input, (BaseVersionedModel, BaseModel)),
             f"{type(self)}.export() expected `input` type [BaseVersionedModel, BaseModel] got [{type(input)}]",
         )

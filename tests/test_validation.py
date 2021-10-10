@@ -1,22 +1,24 @@
-'''
+"""
 This is to understand how Model.validate() works.
 
 TL;DR - MyModel.validate(myModel) doesn't work as expected.
         Do MyModel.validate(myModel.dict()) instead.
-'''
+"""
 
-from typing import Any, Type
-from pydantic import BaseModel, ValidationError
+from typing import TYPE_CHECKING, Any, Type, TypeVar
+
 import pytest
-from aktorz.model.util.validation_mixin import ValidationMixin
+from pydantic import BaseModel, ValidationError
+
+from aktorz.model.util.validation_mixin import ValidationMixin  # type: ignore
+
+if TYPE_CHECKING:
+    Model = TypeVar("Model", bound="BaseModel")
 
 
 class TestValidation:
-
     def test_validation(self):
-
         class MyModel(BaseModel):
-
             class Config:
                 copy_on_model_validation = True
 
@@ -24,8 +26,8 @@ class TestValidation:
             thing2: str
 
         data = {
-            'thing1': 'Thing 1',
-            'thing2': 'Thing 2',
+            "thing1": "Thing 1",
+            "thing2": "Thing 2",
         }
 
         assert isinstance(data, dict)
@@ -83,7 +85,7 @@ class TestValidation:
         with pytest.raises(ValidationError) as exc_info:
             new_model = MyModel.validate(dmodel)
 
-        assert exc_info.value.errors() == [{'loc': ('thing1',), 'msg': 'str type expected', 'type': 'type_error.str'}]
+        assert exc_info.value.errors() == [{"loc": ("thing1",), "msg": "str type expected", "type": "type_error.str"}]
 
         """
         Failed as expected!
@@ -94,12 +96,17 @@ class TestValidation:
         # Use what we learned in test_validation
 
         class MyCustomBaseModel(BaseModel):
-
             @classmethod
-            def validate(cls: Type['Model'], value: Any, **dict_kwargs) -> 'Model':
+            def validate(cls: Type["Model"], value: Any, **dict_kwargs) -> "Model":
                 if isinstance(value, cls):
                     return cls.validate(value.dict(**dict_kwargs))
-                return super().validate(value)
+                return super().validate(value)  # type: ignore
+
+            @classmethod
+            def validate_self(cls: Type["Model"], value: BaseModel, **dict_kwargs) -> BaseModel:
+                assert isinstance(value, cls)
+                new_instance = cls(**value.dict(**dict_kwargs))  # type: ignore
+                return super().validate(new_instance)  # type: ignore
 
         class MyOtherModel(MyCustomBaseModel):
 
@@ -122,20 +129,29 @@ class TestValidation:
     def _do_the_test(self, clazz):
 
         data = {
-            'thing1': 'Thing 1',
-            'thing2': 'Thing 2',
+            "thing1": "Thing 1",
+            "thing2": "Thing 2",
         }
 
         model = clazz.parse_obj(data)
+
+        assert clazz.validate(model)
+        assert clazz.validate(model) == model
+        assert clazz.validate(model) is not model
 
         model.thing1 = dict()
 
         with pytest.raises(ValidationError) as exc_info:
             clazz.validate(model)
 
-        assert exc_info.value.errors() == [{'loc': ('thing1',), 'msg': 'str type expected', 'type': 'type_error.str'}]
+        assert exc_info.value.errors() == [{"loc": ("thing1",), "msg": "str type expected", "type": "type_error.str"}]
 
         with pytest.raises(ValidationError) as exc_info:
-            clazz.validate(model, exclude_unset=True, exclude_none=True, exclude_defaults=True)
+            clazz.validate(model.dict(exclude_unset=True, exclude_none=True, exclude_defaults=True))
 
-        assert exc_info.value.errors() == [{'loc': ('thing1',), 'msg': 'str type expected', 'type': 'type_error.str'}]
+        assert exc_info.value.errors() == [{"loc": ("thing1",), "msg": "str type expected", "type": "type_error.str"}]
+
+        with pytest.raises(ValidationError) as exc_info:
+            clazz.validate_self(model, exclude_unset=True, exclude_none=True, exclude_defaults=True)
+
+        assert exc_info.value.errors() == [{"loc": ("thing1",), "msg": "str type expected", "type": "type_error.str"}]

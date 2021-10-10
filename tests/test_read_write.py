@@ -223,7 +223,10 @@ class TestReadWrite(BaseTest):
                 exported_data = exporter.export(input=input_data, update_version=False)
             return
 
+        assert isinstance(input_data, (BaseVersionedModel, BaseModel))
+
         exported_data = exporter.export(input=input_data, update_version=False)
+
         assert isinstance(exported_data, BaseModel)
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
             assert isinstance(exported_data, BaseVersionedModel)

@@ -80,7 +80,10 @@ class SchemaVersionBase(BaseModel):
         This validator ensures that the semver property will always be a
         SemVer instance.
         """
-        assert (isinstance(v, (str, SemVer)), f"{cls}.validate_version() expected [SemVer, str] got [{type(v)}]")
+        assert (  # type: ignore # noqa: F631
+            isinstance(v, (str, SemVer)),
+            f"{cls}.validate_version() expected [SemVer, str] got [{type(v)}]",
+        )
 
         if isinstance(v, str):
             return SemVer(version=v)

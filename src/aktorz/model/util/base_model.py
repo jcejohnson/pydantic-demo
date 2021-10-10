@@ -4,7 +4,8 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
 from .dict_like_mixin import DictLikeMixin
-from .validation_mixin import ValidationMixin
+from .validation_mixin import ValidationMixin  # type: ignore
+
 
 class BaseModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):
     class Config:

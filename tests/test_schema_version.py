@@ -21,6 +21,15 @@ class TestSchemaVersion:
     def versioned_thing(self):
         return VersionedThing(version=SchemaVersion(prefix="v", semver="1.2.3"), name="Thing One")
 
+    def test_versioned_thing(self):
+
+        semver = SemVer(major=1, minor=2, patch=3, prerelease=None, build=None)
+        semver = SemVer(version="1.2.3")
+
+        schema_version = SchemaVersion(prefix="v", semver=semver)
+
+        VersionedThing(version=schema_version, name="Thing One")
+
     def test_construction(self, versioned_thing: VersionedThing):
         # Redundant
         assert VersionedThing(version=SchemaVersion(prefix="v", semver="1.2.3"), name="Thing One") == versioned_thing
