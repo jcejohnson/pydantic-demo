@@ -57,6 +57,7 @@ class ImportExport:
 
     schema_version_field: str = "schema_version"
     version: Union[SchemaVersion, str] = cast(SchemaVersion, None)
+    package: str = None
     module: ModuleType = cast(ModuleType, None)
     model: BaseVersionedModel = cast(BaseVersionedModel, None)
 
@@ -88,7 +89,7 @@ class ImportExport:
         schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
-        model_package = __package__.replace(".util", "")
+        model_package = values["package"] if values["package"] else __package__.replace(".util", "")
 
         try:
             module = importlib.import_module(f".{schema_version.prefix}{version}", package=model_package)
@@ -100,6 +101,8 @@ class ImportExport:
                 module = importlib.import_module(f".{schema_version.prefix}{final_version}", package=model_package)
             except ModuleNotFoundError as e2:
                 raise ModuleNotFoundError(f"{e1} / {e2}")
+        except Exception as e:
+            raise Exception(e)  ## FIXME
 
         return module
 
@@ -115,7 +118,7 @@ class ImportExport:
 
         # We cannot safely coerce the Model to subclass BaseVersionedModel but we can
         # at least ensure it has the required schema_version field.
-        assert values["schema_version_field"] in model.__fields__
+        assert values["schema_version_field"], "No value for [schema_version_field]."
 
         return model
 

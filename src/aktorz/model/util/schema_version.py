@@ -10,18 +10,19 @@ from semver import VersionInfo as Version  # type: ignore
 
 from .base_model import BaseModel
 
+__regex__ = r"""
+    ^
+    (?P<prefix>[^\d]+)?
+    # See https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+    (?P<semver>((?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?))
+    $
+"""
+
 DEFAULT_PREFIX = "v"
 
-VERSION_REGEX = re.compile(
-    r"""
-        ^
-        (?P<prefix>[^\d]+)?
-        # See https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-        (?P<semver>((?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?))
-        $
-    """,
-    re.VERBOSE,
-)
+VERSION_REGEX = "".join([re.sub(r"#.*", "", x).strip() for x in __regex__.split("\n")])
+
+VERSION_PATTERN = re.compile(__regex__, re.VERBOSE)
 
 
 class SemVer(Version):
@@ -132,7 +133,7 @@ class SchemaVersion(SchemaVersionBase):
         """Return a dict containing the prefix and semver of a SchemaVersionBase or str."""
         if isinstance(schema_version, SchemaVersionBase):
             return {"prefix": schema_version.prefix, "semver": str(schema_version.semver)}
-        match = VERSION_REGEX.match(str(schema_version))
+        match = VERSION_PATTERN.match(str(schema_version))
         parts = match.groupdict()  # type: ignore
         prefix = parts["prefix"] or default_prefix
         semver = parts["semver"] or schema_version
@@ -209,5 +210,5 @@ class SchemaVersion(SchemaVersionBase):
     def __modify_schema__(cls, field_schema):
         field_schema.update(
             comment=f"A string representation of {cls}. Default prefix is [{DEFAULT_PREFIX}].",
-            pattern="".join([re.sub(r"#.*", "", x).strip() for x in VERSION_REGEX.pattern.split("\n")]),
+            pattern=VERSION_REGEX,
         )
