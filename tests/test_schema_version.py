@@ -94,4 +94,6 @@ class TestSchemaVersion:
         # pydantic cannot coerce a string into a SchemaVersion
         with pytest.raises(ValueError) as exc_info:
             VersionedThing(version="v1.2.3", name="VersionedThing One")
-        assert str(exc_info.value).endswith("value is not a valid dict (type=type_error.dict)")
+        assert exc_info.value.errors() == [
+            {"loc": ("version",), "msg": "value is not a valid dict", "type": "type_error.dict"},
+        ]

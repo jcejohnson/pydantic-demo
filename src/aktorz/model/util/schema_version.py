@@ -80,10 +80,7 @@ class SchemaVersionBase(BaseModel):
         This validator ensures that the semver property will always be a
         SemVer instance.
         """
-        assert (  # type: ignore # noqa: F631
-            isinstance(v, (str, SemVer)),
-            f"{cls}.validate_version() expected [SemVer, str] got [{type(v)}]",
-        )
+        assert isinstance(v, (str, SemVer)), f"{cls}.validate_version() expected [SemVer, str] got [{type(v)}]"
 
         if isinstance(v, str):
             return SemVer(version=v)
@@ -121,8 +118,8 @@ class SchemaVersion(SchemaVersionBase):
         if not isinstance(self.semver, SemVer):
             self.semver = SemVer(self.semver)
 
-        assert isinstance(self.prefix, str)
-        assert isinstance(self.semver, SemVer)
+        assert isinstance(self.prefix, str), f"SchemaVersion prefix must be a str. Got [{type(self.prefix)}]."
+        assert isinstance(self.semver, SemVer), f"SchemaVersion semver must be a str. Got [{type(self.semver)}]."
 
     @classmethod
     def create(cls, version: Union[SchemaVersionBase, str]):

@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, Any, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type, TypeVar, cast
 
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    Model = TypeVar("Model", bound="BaseModel")
+    Model = TypeVar("Model", bound=BaseModel)
 
 
 class ValidationMixin(object):
@@ -17,7 +17,7 @@ class ValidationMixin(object):
 
     @classmethod
     def validate(cls: Type["Model"], value: Any) -> "Model":  # type: ignore
-        return getattr(cls, "validate_self")._validate_self_(value)
+        return getattr(cls, "validate_self")(value)
 
     @classmethod
     def validate_self(cls, value: Any, **dict_kwargs) -> "Model":
@@ -25,7 +25,6 @@ class ValidationMixin(object):
         if isinstance(value, cls):
             # Create, validate and return a new instance from the dict representation of `value`.
             # raises ValidationError if not.
-            new_instance = getattr(cls, "parse_obj").value.dict(**dict_kwargs)
+            new_instance = getattr(cls, "parse_obj")(cast(BaseModel, value).dict(**dict_kwargs))
             value = new_instance
-        assert isinstance(value, cls)
-        return getattr(super(), "validate").validate(value)
+        return getattr(super(), "validate")(value)

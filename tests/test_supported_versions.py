@@ -106,7 +106,6 @@ class TestSupportedVersions:
         Veryfy that every version implmentation module is implementing a supported version.
         Any modules that are not implementing supported versions are unnecessary and should be deleted.
         """
-
         assert (
             version in supported_versions
         ), f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
