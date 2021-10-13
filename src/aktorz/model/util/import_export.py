@@ -176,7 +176,7 @@ class ImportExport:
         """
         Set the version in a Model created by export_model()
         """
-        model.schema_version = self.version
+        model[self.schema_version_field] = self.version
 
 
 # #### LoaderValidations Implementation
