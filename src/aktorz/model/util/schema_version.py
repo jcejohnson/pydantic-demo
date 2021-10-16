@@ -5,10 +5,11 @@ This module provides extended semver support which allows for prefixed versions.
 import re
 from typing import Union, cast
 
+from pydantic import BaseModel as PydanticBaseModel
 from pydantic import validator
 from semver import VersionInfo as Version  # type: ignore
 
-from .base_model import BaseModel
+from .mixin_arbitrary_type import ArbitraryTypeMixin
 
 __regex__ = r"""
     ^
@@ -25,7 +26,7 @@ VERSION_REGEX = "".join([re.sub(r"#.*", "", x).strip() for x in __regex__.split(
 VERSION_PATTERN = re.compile(__regex__, re.VERBOSE)
 
 
-class SemVer(Version):
+class SemVer(ArbitraryTypeMixin, Version):
     """
     A subclass of semver.VersionInfo providing pydantic compatibility.
 
@@ -51,16 +52,8 @@ class SemVer(Version):
             other = SemVer(other)
         return super().compare(other)
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
 
-    @classmethod
-    def validate(cls, v):
-        return v
-
-
-class SchemaVersionBase(BaseModel):
+class SchemaVersionBase(PydanticBaseModel):
     """
     A subclass of BaseModel containing version prefix and semver properties.
 

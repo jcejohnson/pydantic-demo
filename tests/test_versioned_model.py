@@ -6,7 +6,7 @@ from pydantic import validator
 
 # We are testing the public interface so we will import from
 # the package rather than the underlying modules.
-from aktorz.model import BaseModel, BaseVersionedModel, SchemaVersion
+from aktorz.model import BaseModel, SchemaVersion, VersionedModelMixin
 
 
 class VersionedThing(BaseModel):
@@ -28,16 +28,20 @@ class VersionedThing(BaseModel):
         return result
 
 
-class VersionedModel(BaseVersionedModel):
-    # BaseVersionedModel defines schema_version as a SchemaVersion
+class VersionedModel(
+    VersionedModelMixin,
+    BaseModel,
+):
+    # VersionedModelMixin defines schema_version as a SchemaVersion
     # not as a Union[SchemaVersion,str] like VersionedThing above.
+
     name: str
 
 
 class TestSchemaVersion:
     def test_export_schema(self, resource_path_root):
 
-        # Verify that we can dump the json schema for our BaseVersionedModel subclass
+        # Verify that we can dump the json schema for our VersionedModelMixin subclass
         # and that it meets our expectations.
 
         schema = VersionedModel.schema()
@@ -64,7 +68,7 @@ class TestSchemaVersion:
         # string version becomes a SchemaVersion instance.
         assert type(model1.schema_version) == SchemaVersion
 
-        # The dict() method of BaseVersionedModel converts the
+        # The dict() method of VersionedModelMixin converts the
         # SchemaVersion instance back to a string to keep the
         # dict and json representations simpler.
         schema_version = model1.dict()["schema_version"]

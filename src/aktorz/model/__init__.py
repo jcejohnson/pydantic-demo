@@ -7,10 +7,10 @@ from .util import (  # isort:skip
     SCHEMA_VERSION_REGEX,
     BaseDictModel,
     BaseModel,
-    BaseVersionedModel,
     Exporter,
     Loader,
     LoaderValidations,
     SchemaVersion,
     SemVer,
+    VersionedModelMixin,
 )

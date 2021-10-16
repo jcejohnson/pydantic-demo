@@ -3,8 +3,8 @@ from typing import Any
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra
 
-from .dict_like_mixin import DictLikeMixin
-from .validation_mixin import ValidationMixin
+from .mixin_dict_like import DictLikeMixin
+from .mixin_validate_self import ValidationMixin
 
 
 class BaseModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):

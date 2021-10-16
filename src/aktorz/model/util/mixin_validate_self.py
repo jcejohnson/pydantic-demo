@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING, Any, Type, TypeVar, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel as PydanticBaseModel
 
 if TYPE_CHECKING:
-    Model = TypeVar("Model", bound=BaseModel)
+    Model = TypeVar("Model", bound=PydanticBaseModel)
+
+# Mixins which do not add add fields, validators or other things that pydantic
+# needs to be aware of are not required to subclass pydantic.BaseModel
 
 
 class ValidationMixin(object):
@@ -27,6 +30,6 @@ class ValidationMixin(object):
         if isinstance(value, cls):
             # Create, validate and return a new instance from the dict representation of `value`.
             # raises ValidationError if not.
-            new_instance = getattr(cls, "parse_obj")(cast(BaseModel, value).dict(**dict_kwargs))
+            new_instance = getattr(cls, "parse_obj")(cast(PydanticBaseModel, value).dict(**dict_kwargs))
             value = new_instance
         return getattr(super(), "validate")(value)

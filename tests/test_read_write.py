@@ -16,7 +16,7 @@ from .version_modules import CONFIG_DATA
 # isort & black fight over this one so we tell isort to skip it.
 from aktorz.model import (  # isort:skip
     BaseModel,
-    BaseVersionedModel,
+    VersionedModelMixin,
     Exporter,
     Loader,
     SchemaVersion,
@@ -91,6 +91,7 @@ class TestImportExportBaseclass(BaseTest):
     def test_loader_create(self):
 
         version = SUPPORTED_VERSIONS[0]
+        print(f"version = {version}")
         Loader(version=version)
         loader = Loader(version=SchemaVersion.create(version))
 
@@ -171,7 +172,7 @@ class TestReadWrite(BaseTest):
         # this level is ensure that the schema version matches what we expected to read.
 
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
-            assert isinstance(data, BaseVersionedModel)
+            assert isinstance(data, VersionedModelMixin)
             assert isinstance(data.schema_version, SchemaVersion)
             assert data.schema_version == supported_version  # because update_version=False
         else:
@@ -203,9 +204,9 @@ class TestReadWrite(BaseTest):
 
         assert isinstance(input_data, BaseModel)
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
-            assert isinstance(input_data, BaseVersionedModel)
+            assert isinstance(input_data, VersionedModelMixin)
         else:
-            assert not isinstance(input_data, BaseVersionedModel)
+            assert not isinstance(input_data, VersionedModelMixin)
 
         # If the target version is missing fields that are present in the input version
         # then those will be dropped during the export. This is as intended because the
@@ -223,13 +224,13 @@ class TestReadWrite(BaseTest):
                 exported_data = exporter.export(input=input_data, update_version=False)
             return
 
-        assert isinstance(input_data, (BaseVersionedModel, BaseModel))
+        assert isinstance(input_data, (VersionedModelMixin, BaseModel))
 
         exported_data = exporter.export(input=input_data, update_version=False)
 
         assert isinstance(exported_data, BaseModel)
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
-            assert isinstance(exported_data, BaseVersionedModel)
+            assert isinstance(exported_data, VersionedModelMixin)
             assert isinstance(exported_data.schema_version, SchemaVersion)
             assert exported_data.schema_version == implemented_version
         else:
@@ -238,7 +239,7 @@ class TestReadWrite(BaseTest):
             assert isinstance(custom_exporter, Exporter)
             assert type(custom_exporter) != Exporter
             # These mirror the v0.2.0 assertions
-            assert not isinstance(exported_data, BaseVersionedModel)
+            assert not isinstance(exported_data, VersionedModelMixin)
             assert isinstance(exported_data.schema_version, str)
             assert SchemaVersion.create(exported_data.schema_version) == implemented_version
 

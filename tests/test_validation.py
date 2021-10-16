@@ -8,17 +8,18 @@ TL;DR - MyModel.validate(myModel) doesn't work as expected.
 from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ValidationError
 
-from aktorz.model.util.validation_mixin import ValidationMixin
+from aktorz.model.util.mixin_validate_self import ValidationMixin
 
 if TYPE_CHECKING:
-    Model = TypeVar("Model", bound="BaseModel")
+    Model = TypeVar("Model", bound="PydanticBaseModel")
 
 
 class TestValidation:
     def test_validation(self):
-        class MyModel(BaseModel):
+        class MyModel(PydanticBaseModel):
             class Config:
                 copy_on_model_validation = True
 
@@ -95,7 +96,7 @@ class TestValidation:
 
         # Use what we learned in test_validation
 
-        class MyCustomBaseModel(BaseModel):
+        class MyCustomBaseModel(PydanticBaseModel):
             @classmethod
             def validate(cls: Type["Model"], value: Any, **dict_kwargs) -> "Model":
                 if isinstance(value, cls):
@@ -103,7 +104,7 @@ class TestValidation:
                 return super().validate(value)  # type: ignore
 
             @classmethod
-            def validate_self(cls: Type["Model"], value: BaseModel, **dict_kwargs) -> BaseModel:
+            def validate_self(cls: Type["Model"], value: PydanticBaseModel, **dict_kwargs) -> PydanticBaseModel:
                 assert isinstance(value, cls)
                 new_instance = cls(**value.dict(**dict_kwargs))  # type: ignore
                 return super().validate(new_instance)  # type: ignore
@@ -119,7 +120,7 @@ class TestValidation:
 
         # Verify that ValidationMixin behaves the same as MyCustomBase
 
-        class MyFinalModel(ValidationMixin, BaseModel):
+        class MyFinalModel(ValidationMixin, PydanticBaseModel):
 
             thing1: str
             thing2: str

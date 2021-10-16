@@ -18,13 +18,14 @@ if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
 
 from .base_model import BaseModel
-from .base_model_versioned import BaseVersionedModel
-from .schema_version import SchemaVersion, SchemaVersionBase
+from .base_versioned_model import BaseVersionedModel
+from .mixin_arbitrary_type import ArbitraryTypeMixin
+from .schema_version import SchemaVersion
 
 # #### ModuleType Implementation
 
 
-class ModuleType(BaseModuleType):
+class ModuleType(ArbitraryTypeMixin, BaseModuleType):
     """
     Teach pydantic how to validate types.ModuleType
 
@@ -39,14 +40,6 @@ class ModuleType(BaseModuleType):
     # type(ModuleType.VERSION) == ModuleType.SchemaVersion
     VERSION = None
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        return v
-
 
 # #### ImportExport Implementation
 
@@ -57,17 +50,19 @@ class ImportExport:
 
     schema_version_field: str = "schema_version"
     version: Union[SchemaVersion, str] = cast(SchemaVersion, None)
-    package: str = None
-    module: ModuleType = cast(ModuleType, None)
-    model: BaseVersionedModel = cast(BaseVersionedModel, None)
+    package: Optional[str] = None
+    module: Optional[ModuleType] = None
+    model: Optional[BaseModel] = None  # model may be versioned or unversioned.
 
     @validator("version")
     @classmethod
-    def validate_version_field(cls, v) -> SchemaVersion:
+    def validate_version_field(cls, v: Union[SchemaVersion, str]) -> SchemaVersion:
         # Adding @dataclass to Loader will cause this validator to be ignored. Why?
         if isinstance(v, str):
             return SchemaVersion.create(v)
-        return v
+        if isinstance(v, SchemaVersion):
+            return v
+        raise TypeError(f"ImportExport.validate_version_field() expected type [SchemaVersion, str] got [{type(v)}]")
 
     @validator("module")
     @classmethod
@@ -102,7 +97,7 @@ class ImportExport:
             except ModuleNotFoundError as e2:
                 raise ModuleNotFoundError(f"{e1} / {e2}")
         except Exception as e:
-            raise Exception(e)  ## FIXME
+            raise Exception(e)  # FIXME
 
         return module
 
@@ -111,14 +106,21 @@ class ImportExport:
     def validate_model_field(cls, model, values) -> BaseVersionedModel:
         """Get the Model class from the module."""
 
-        module = cast(ModuleType, values["module"])
-        model = getattr(module, "Model")
+        model = getattr(values["module"], "Model")
         if issubclass(model, BaseVersionedModel):
             return model
 
+        assert issubclass(model, BaseModel), f"{type(model)} does not subclass BaseModel"
+
         # We cannot safely coerce the Model to subclass BaseVersionedModel but we can
-        # at least ensure it has the required schema_version field.
+        # at least ensure it has an attribute telling us which of its fields represent
+        # the schema version.
+        assert "schema_version_field" in values, "No [schema_version_field] attribute."
         assert values["schema_version_field"], "No value for [schema_version_field]."
+
+        # assert getattr(
+        #     model, values["schema_version_field"]
+        # ), f"Model type [{model.__class__}] missing [{values['schema_version_field']}] attribute."
 
         return model
 
@@ -153,24 +155,24 @@ class ImportExport:
 
         # If other.model is not a BaseVersionedModel then we will let the new
         # instance's validate_model_field() figure it out.
-        return cls(
-            version=SchemaVersion.create(other.version),
-            module=cast(ModuleType, other.module),
-            model=cast(BaseVersionedModel, None),
-        )
+        return cls(version=SchemaVersion.create(other.version), module=cast(ModuleType, other.module))
 
-    def get_schema_version(self, model: Union[BaseVersionedModel, BaseModel, dict]) -> SchemaVersion:
+    def get_schema_version(self, model: Union[BaseModel, dict]) -> SchemaVersion:
         """
         Get the schema version of an input Model that is to be exported.
         """
 
+        # Avoid mypy complaint by using getattr()
+        #   Value of type "Union[BaseVersionedModel, Dict[Any, Any]]" is not indexable
+        schema_version_field = getattr(model, "get")(self.schema_version_field)
+
         if isinstance(model, dict):
-            return SchemaVersion.create(model[self.schema_version_field])
+            return SchemaVersion.create(schema_version_field)
 
-        if isinstance(model[self.schema_version_field], SchemaVersion):
-            return model[self.schema_version_field]
+        if isinstance(schema_version_field, SchemaVersion):
+            return schema_version_field
 
-        return SchemaVersion.create(model[self.schema_version_field])
+        return SchemaVersion.create(schema_version_field)
 
     def set_schema_version(self, model):
         """
@@ -229,8 +231,7 @@ class Loader(ImportExport):
         TODO: Document this properly.
 
         """
-        do_load = self.loader().load_input
-        return do_load(input=input, validate_version=validate_version, update_version=update_version)
+        return self.loader().load_input(input=input, validate_version=validate_version, update_version=update_version)
 
     def loader(self):
         """
@@ -253,7 +254,7 @@ class Loader(ImportExport):
         input: Union[str, dict, FilePath],
         validate_version: Optional[LoaderValidations] = LoaderValidations.READABLE,
         update_version: Optional[bool] = True,
-    ) -> Union[BaseVersionedModel, BaseModel]:
+    ) -> BaseVersionedModel:
         """
         Create a Model instance from the input data which can be a json string, a dict
         or a FilePath pointing to a json document.
@@ -302,7 +303,7 @@ class Loader(ImportExport):
 
         return data
 
-    def materialze_model(self, data: dict) -> Union[BaseVersionedModel, BaseModel]:
+    def materialze_model(self, data: dict) -> BaseVersionedModel:
         """
         Materialize a Model from a compatible dict.
 
@@ -329,7 +330,8 @@ class Loader(ImportExport):
 
         # Delegate to SchemaVersion.create() to convert (if necessary) the implementation module's
         # VERSION attribute to a SchemaVersion.
-        module_version = SchemaVersion.create(version=cast(Union[SchemaVersionBase, str], self.module.VERSION))
+        version = str(getattr(self.module, "VERSION"))
+        module_version = SchemaVersion.create(version=version)
 
         if validate_version == LoaderValidations.NONE:
             return True
@@ -410,10 +412,10 @@ class Exporter(ImportExport):
     def export(
         self,
         *,
-        input: Union[BaseVersionedModel, BaseModel],
+        input: BaseModel,
         update_version: Optional[bool] = True,
         copy_before_export: Optional[bool] = False,
-    ) -> Union[BaseVersionedModel, BaseModel]:
+    ) -> BaseModel:
         """
         Create a new Model instance from the input Model.
         Delegates to export_model() after fetching the target version's custom
@@ -433,8 +435,8 @@ class Exporter(ImportExport):
         # We cannot use @validate_arguments because `input` may be a subclass
         # of BaseModel and we explicitly disallow extra fields.
         assert isinstance(
-            input, (BaseVersionedModel, BaseModel)
-        ), f"{type(self)}.export() expected `input` type [BaseVersionedModel, BaseModel] got [{type(input)}]"
+            input, BaseModel
+        ), f"{type(self)}.export() expected `input` type [BaseModel] got [{type(input)}]"
 
         do_export = self.exporter().export_model
         return do_export(input=input, update_version=update_version)
@@ -457,10 +459,10 @@ class Exporter(ImportExport):
     def export_model(
         self,
         *,
-        input: Union[BaseVersionedModel, BaseModel],
+        input: BaseModel,
         update_version: Optional[bool] = True,
         copy_before_export: Optional[bool] = False,
-    ) -> Union[BaseVersionedModel, BaseModel]:
+    ) -> BaseModel:
         """
         Create a Model instance from the input Model.
 
@@ -498,7 +500,7 @@ class Exporter(ImportExport):
 
         return model
 
-    def make_compatible(self, model: Union[BaseVersionedModel, BaseModel]) -> dict:
+    def make_compatible(self, model: BaseModel) -> dict:
         """
         Return a dict representation of `model` that is compatible with self.version.
 
@@ -521,7 +523,7 @@ class Exporter(ImportExport):
     def get_excludes(self) -> Union["AbstractSetIntStr", "MappingIntStrAny"]:
         return cast(Union["AbstractSetIntStr", "MappingIntStrAny"], None)
 
-    def materialze_model(self, data: dict) -> Union[BaseVersionedModel, BaseModel]:
+    def materialze_model(self, data: dict) -> BaseModel:
         """
         Materialize a Model from a compatible dict representation of another Model.
 
@@ -534,16 +536,15 @@ class Exporter(ImportExport):
         This is absolutely not thread safe if self.ignore_extra is truthy!
         """
 
+        parse_obj = cast(BaseModel, self.model).parse_obj
+
         if not self.ignore_extra:
-            return self.model.parse_obj(data)
+            return parse_obj(data)
 
         extra = BaseModel.Config.extra
         BaseModel.Config.extra = Extra.ignore
-        model = self.model.parse_obj(data)
+        model = parse_obj(data)
         BaseModel.Config.extra = extra
-        print("")
-        print(f"model [{type(model)}] ")
-        print(f"model.schema_version [{model.schema_version}] ")
 
         return model
 

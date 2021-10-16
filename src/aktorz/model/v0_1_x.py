@@ -1,10 +1,17 @@
 from typing import NewType, Union
 
-from . import BaseModel, BaseVersionedModel
+from . import BaseModel
 from . import Exporter as BaseExporter
 from . import Loader as BaseLoader
+from . import VersionedModelMixin
+
+
+class BaseVersionedModel(VersionedModelMixin, BaseModel):
+    pass
+
 
 # #### Constants
+
 
 # 0.2.0 -> from . import SchemaVersion
 SchemaVersion = NewType("SchemaVersion", str)

@@ -3,17 +3,16 @@ Additional base models with conflicting dependencies or that otherwise don't
 make sense to belong to .base_model
 """
 
+from pydantic import BaseModel as PydanticBaseModel
 from pydantic import validator
 
-from .base_model import BaseModel
 from .schema_version import SchemaVersion
 
-# This may need to become a mixin so that it can be added to either BaseModel or CommentableBaseModel.
-# Or maybe its base should be CommentableBaseModel.
-# TBD
+# Mixins which add fields, validators or other things that pydantic
+# needs to be aware of must subclass pydantic.BaseModel
 
 
-class BaseVersionedModel(BaseModel):
+class VersionedModelMixin(PydanticBaseModel):
     """
     Provides a schema_version property and a custom dict() method that will
     represent schema_version as a string.

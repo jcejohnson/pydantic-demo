@@ -3,9 +3,6 @@ import re
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Extra, root_validator
 
-from .dict_like_mixin import DictLikeMixin
-from .validation_mixin import ValidationMixin
-
 COMMENT_REGEX = r"^(.*[_-])?comment$"
 
 
@@ -13,10 +10,11 @@ def is_comment(thing: str) -> bool:
     return re.match(COMMENT_REGEX, thing) is not None
 
 
-# This doesn't work as a mixin. I don't know why.
+# Mixins which add fields, validators or other things that pydantic
+# needs to be aware of must subclass pydantic.BaseModel
 
 
-class CommentableBaseModel(ValidationMixin, PydanticBaseModel):
+class CommentableModelMixin(PydanticBaseModel):
     class Config:
         extra = Extra.allow
 
@@ -42,8 +40,3 @@ class CommentableBaseModel(ValidationMixin, PydanticBaseModel):
                 raise ValueError(f'"{cls}" object has no field "{k}"')
 
         return values
-
-
-class CommentableDictLikeBaseModel(DictLikeMixin, CommentableBaseModel):
-
-    pass

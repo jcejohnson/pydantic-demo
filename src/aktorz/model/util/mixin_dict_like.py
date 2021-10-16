@@ -1,4 +1,8 @@
-class DictLikeMixin:
+# Mixins which do not add add fields, validators or other things that pydantic
+# needs to be aware of are not required to subclass pydantic.BaseModel
+
+
+class DictLikeMixin(object):
     """
     Provide minimal dict-like behavior to a pydantic BaseModel (or subclass).
     """
