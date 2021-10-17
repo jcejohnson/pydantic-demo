@@ -97,7 +97,10 @@ class ImportExport:
             except ModuleNotFoundError as e2:
                 raise ModuleNotFoundError(f"{e1} / {e2}")
         except Exception as e:
-            raise Exception(e)  # FIXME
+            raise Exception(e)  #
+
+        if hasattr(module, "SCHEMA_VERSION_FIELD"):
+            values["schema_version_field"] = getattr(module, "SCHEMA_VERSION_FIELD")
 
         return module
 
