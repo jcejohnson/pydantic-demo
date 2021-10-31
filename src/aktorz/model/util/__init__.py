@@ -1,4 +1,4 @@
-from .base_model import BaseDictModel, BaseModel
+from .base_model import BaseDictModel, BaseListModel, BaseModel
 from .base_versioned_model import BaseVersionedModel
 from .import_export import Exporter, Loader, LoaderValidations
 from .mixin_commentable_model import CommentableModelMixin

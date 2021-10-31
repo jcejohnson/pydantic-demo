@@ -17,7 +17,7 @@ The point of this repository (beyond the obvious goal of learning pydantic) is t
 
 The version tags of this project reflect the data format, they specifically do not reflect the versions (evolution) of the supporting code (e.g. -- BaseModel, Loader, etc). The supporting code evolves as necessary to support our ability to load, save, import and export the data as it changes over time.
 
-In retrospect, the `v` prefix for both the version and the version implementation modules should have probably been `f` (e.g. -- format version) and the `v` used to mark milestones of the supporting code. I may go back and refactor along those lines _or_ I may extract the supportting code into a separate library when things mature a bit more.
+In retrospect, the `v` prefix for both the version and the version implementation modules should have probably been `f` (e.g. -- format version) and the `v` used to mark milestones of the supporting code. I may go back and refactor along those lines _or_ I may extract the supporting code into a separate library when things mature a bit more.
 
 ## Supporting New Schema Versions
 

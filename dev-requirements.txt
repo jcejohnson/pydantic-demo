@@ -4,9 +4,6 @@
 #
 #    pip-compile dev-requirements.in
 #
---index-url https://nexus.us.equifax.com/repository/cia-combined-pypi-grouped/simple/
---trusted-host nexus.us.equifax.com
-
 appdirs==1.4.4
     # via
     #   black

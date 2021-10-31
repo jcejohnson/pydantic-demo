@@ -6,6 +6,7 @@ from .util import (  # isort:skip
     DEFAULT_VERSION_PREFIX,
     SCHEMA_VERSION_REGEX,
     BaseDictModel,
+    BaseListModel,
     BaseModel,
     Exporter,
     Loader,

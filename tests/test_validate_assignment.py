@@ -1,11 +1,8 @@
-
-from pydantic import BaseModel, ValidationError
-
 import pytest
+from pydantic import BaseModel, ValidationError
 
 
 class Foo(BaseModel):
-
     class Config:
         validate_assignment = True
 
@@ -14,7 +11,6 @@ class Foo(BaseModel):
 
 
 class Bar(BaseModel):
-
     class Config:
         validate_assignment = False
 
@@ -23,7 +19,6 @@ class Bar(BaseModel):
 
 
 class Baz(BaseModel):
-
     class Config:
         validate_assignment = True
 
@@ -31,13 +26,12 @@ class Baz(BaseModel):
     thing2: int
 
     def __setattr__(self, name, value):
-        if name == 'thing2' and isinstance(value, str):
+        if name == "thing2" and isinstance(value, str):
             value = len(value)
         return super().__setattr__(name, value)
 
 
 class TestValidateAssignment:
-
     def test_obj(self):
 
         obj = Bar(thing1="thing1", thing2=22)
@@ -58,8 +52,8 @@ class TestValidateAssignment:
 
     def test_invalid_init(self):
 
-    	# Config.validate_assignment=False does not mess
-    	# with initialization validation. Nor should it.
+        # Config.validate_assignment=False does not mess
+        # with initialization validation. Nor should it.
 
         with pytest.raises(ValidationError):
             Bar(thing1=dict(), thing2=22)
@@ -77,8 +71,8 @@ class TestValidateAssignment:
             Baz(thing1=dict(), thing2=22)
 
         with pytest.raises(ValidationError):
-        	# initialization validation does not use Baz's
-        	# custom __setattr__()
+            # initialization validation does not use Baz's
+            # custom __setattr__()
             Baz(thing1="Thing 1", thing2="Thing 2")
 
     def test_coercion(self):
