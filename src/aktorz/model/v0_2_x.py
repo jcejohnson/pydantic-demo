@@ -1,5 +1,6 @@
-from typing import NewType, Union
+from typing import NewType
 
+from . import SchemaVersion  # noqa: F401
 from . import BaseModel
 from . import Exporter as BaseExporter
 from . import Loader as BaseLoader
@@ -14,8 +15,6 @@ class BaseVersionedModel(VersionedModelMixin, BaseModel):
 
 
 # #### Data types
-
-from . import SchemaVersion
 
 MovieTitle = NewType("MovieTitle", str)
 

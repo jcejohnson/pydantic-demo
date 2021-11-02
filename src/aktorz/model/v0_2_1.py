@@ -1,12 +1,13 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional
 
-from pydantic import Field, conint, validator
+from pydantic import Field, conint
 
 from . import BaseDictModel, BaseListModel, BaseModel
-from .v0_2_x import ActorId, Exporter, Loader, MovieId, MovieTitle, PersonId, SchemaVersion, Year  # noqa: F401
+from .v0_2_x import PersonId  # noqa: F401
+from .v0_2_x import ActorId, CharacterId, MovieId, MovieTitle, SchemaVersion, Year
 
-VERSION = SchemaVersion("v0.2.1")
+VERSION = SchemaVersion.create("v0.2.1")
 
 
 # #### Model classes
@@ -30,6 +31,17 @@ class Person(BaseModel):
     home_town: Optional[str]
 
 
+class HobbiesById(BaseDictModel):
+    __root__: Dict[str, str]
+
+
+class MovieList(BaseListModel):
+    __root__: List[MovieId]
+
+
+class SpousesById(BaseDictModel):
+    __root__: Dict[PersonId, Person]
+
 
 class Actor(Person):
     """A person who performs in movies."""
@@ -45,6 +57,7 @@ class Actor(Person):
     hobbies: Optional[HobbiesById]
     movies: MovieList
     spouses: Optional[SpousesById]
+
 
 class Character(Person):
     @property
@@ -63,7 +76,7 @@ class CastMember(BaseModel):
     character: CharacterId
 
     # type: ignore
-    salary: Optional[conint(ge=0)] = Field(description="millions $USD")
+    salary: Optional[conint(ge=0)] = Field(description="millions $USD")  # type: ignore
 
 
 class CastById(BaseDictModel):
@@ -81,26 +94,14 @@ class Movie(BaseModel):
     year: Optional[Year]
 
     # type: ignore
-    budget: Optional[conint(ge=0)] = Field(description="millions $USD")
+    budget: Optional[conint(ge=0)] = Field(description="millions $USD")  # type: ignore
 
     # type: ignore
-    gross: Optional[conint(ge=0)] = Field(description="millions $USD")
-
-
-class HobbiesById(BaseDictModel):
-    __root__: Dict[str, str]
-
-
-class SpousesById(BaseDictModel):
-    __root__: Dict[PersonId, Spouse]
+    gross: Optional[conint(ge=0)] = Field(description="millions $USD")  # type: ignore
 
 
 class MoviesById(BaseDictModel):
     __root__: Dict[MovieId, Movie]
-
-
-class MovieList(BaseListModel):
-    __root__: List[MovieId]
 
 
 class ActorsById(BaseDictModel):
