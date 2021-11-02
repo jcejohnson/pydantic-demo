@@ -7,7 +7,7 @@ from . import BaseDictModel, BaseListModel, BaseModel
 from .v0_2_x import PersonId  # noqa: F401
 from .v0_2_x import ActorId, CharacterId, MovieId, MovieTitle, SchemaVersion, Year
 
-VERSION = SchemaVersion.create("v0.2.1")
+VERSION = SchemaVersion.create("v0.2.0")
 
 
 # #### Model classes

@@ -45,7 +45,7 @@ class VersionModules:
             module = importlib.import_module(f".{name}", package=v0_1_x.__package__)
             self.version_modules_by_name[name] = module
 
-            version = getattr(module, "VERSION")
+            version = str(getattr(module, "VERSION"))
             if version not in self.version_modules_by_version:
                 self.version_modules_by_version[version] = self.version_modules_by_name[name]
 

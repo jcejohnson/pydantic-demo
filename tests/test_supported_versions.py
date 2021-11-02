@@ -106,12 +106,23 @@ class TestSupportedVersions:
         Veryfy that every version implmentation module is implementing a supported version.
         Any modules that are not implementing supported versions are unnecessary and should be deleted.
         """
-        assert (
-            version in supported_versions
-        ), f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
+
+        assert version in [
+            self.finalize(v) for v in supported_versions
+        ], f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
 
     @pytest.mark.parametrize("version", [(version) for version in SUPPORTED_VERSIONS])
     def test_every_version_is_implemented(self, version, implemented_versions):
         """Verify that every supported version has an implementation module."""
 
-        assert version in implemented_versions, f"Missing implementation for supported version [{version}]."
+        assert (
+            self.finalize(version) in implemented_versions
+        ), f"Missing implementation for supported version [{version}]."
+
+    def finalize(self, v):
+        assert isinstance(v, str)
+        try:
+            i = v.index("-rc")
+            return v[0:i]
+        except ValueError:
+            return v

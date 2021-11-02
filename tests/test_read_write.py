@@ -4,11 +4,12 @@ Test that all modules can read and write the things they say they can.
 
 import json
 import os
+import warnings
 from pathlib import Path
 
 import pytest
 
-from .base_test import BaseTest
+from .base_test import BaseTest, ExpectedWarning
 from .version_modules import CONFIG_DATA
 
 # We are testing the public interface so we will import from
@@ -64,7 +65,23 @@ def skip_incompatible_combinations(func):
                 f"Older implementation version [{schema_version}] is not required to "
                 f"read/write newer supported version [{supported_version}]."
             )
-            # warnings.warn(m, ExpectedWarning)
+            warnings.warn(m, ExpectedWarning)
+            return pytest.skip(m)
+
+        if not schema_version.can_read(supported_version):
+            m = (
+                f"Implementation version [{schema_version}] reports that it cannot "
+                f"read supported version [{supported_version}]."
+            )
+            warnings.warn(m, ExpectedWarning)
+            return pytest.skip(m)
+
+        if not schema_version.can_write(supported_version):
+            m = (
+                f"Implementation version [{schema_version}] reports that it cannot "
+                f"write supported version [{supported_version}]."
+            )
+            warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
 
         loader = Loader(version=implemented_version)
@@ -73,6 +90,10 @@ def skip_incompatible_combinations(func):
         dotted_version = supported_version.replace("v", "")
         file_name = f"actor-data-{dotted_version}.json"
         data_path = Path(os.path.join(resource_path_root, file_name))
+        if not data_path.exists() and "-rc" in dotted_version:
+            dotted_version = dotted_version[0 : dotted_version.index("-rc")]
+            file_name = f"actor-data-{dotted_version}.json"
+            data_path = Path(os.path.join(resource_path_root, file_name))
         assert data_path.exists()
 
         return func(
