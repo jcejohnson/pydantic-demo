@@ -68,7 +68,13 @@ def skip_incompatible_combinations(func):
             warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
 
-        if not schema_version.can_read(supported_version):
+        loader = Loader(version=schema_version)
+        assert loader
+
+        exporter = Exporter(version=schema_version)
+        assert exporter
+
+        if not schema_version.can_read(supported_version) and not loader.can_load(supported_version):
             m = (
                 f"Implementation version [{schema_version}] reports that it cannot "
                 f"read supported version [{supported_version}]."
@@ -76,16 +82,13 @@ def skip_incompatible_combinations(func):
             warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
 
-        if not schema_version.can_write(supported_version):
+        if not schema_version.can_write(supported_version) and not exporter.can_export(supported_version):
             m = (
                 f"Implementation version [{schema_version}] reports that it cannot "
                 f"write supported version [{supported_version}]."
             )
             warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
-
-        loader = Loader(version=implemented_version)
-        assert loader
 
         dotted_version = supported_version.replace("v", "")
         file_name = f"actor-data-{dotted_version}.json"
