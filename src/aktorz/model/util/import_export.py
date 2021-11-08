@@ -81,6 +81,7 @@ class ImportExport:
         old_data = exporter.dict()
         """
 
+        print(values)
         schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
@@ -214,7 +215,7 @@ class Loader(ImportExport):
     ) -> BaseVersionedModel:
         """
         Create a Model instance from the input data.
-        Delegates to load_input() after fetching the version implementations custom
+        Delegates to load_input() after fetching the version implementation's custom
         Loader if there is one.
 
         These are equivalent regardless if there is or is not a custom loader:

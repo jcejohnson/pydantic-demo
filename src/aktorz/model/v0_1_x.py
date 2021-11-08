@@ -39,8 +39,6 @@ PersonId = NewType("PersonId", str)
 # 0.1.0 : PersonId
 ActorId = NewType("ActorId", PersonId)
 
-# ### A custom Exporter for v0.1.x
-
 
 class Loader(BaseLoader):
     def set_schema_version(self, model):

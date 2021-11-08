@@ -29,7 +29,7 @@ ActorId = NewType("ActorId", PersonId)
 CharacterId = NewType("CharacterId", PersonId)
 
 
-# ### A custom Exporter for v0.2.x
+# ### Custom Loader/Exporter for v0.2.x
 
 
 class Loader(BaseLoader):
