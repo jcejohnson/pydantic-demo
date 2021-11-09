@@ -23,7 +23,7 @@ DEFAULT_PREFIX = "v"
 
 VERSION_REGEX = "".join([re.sub(r"#.*", "", x).strip() for x in __regex__.split("\n")])
 
-VERSION_PATTERN = re.compile(__regex__, re.VERBOSE)
+VERSION_PATTERN = re.compile(VERSION_REGEX, re.VERBOSE)
 
 
 class SemVer(ArbitraryTypeMixin, Version):
@@ -124,6 +124,8 @@ class SchemaVersion(SchemaVersionBase):
     @classmethod
     def get_parts(cls, schema_version: Union[SchemaVersionBase, str], default_prefix: str = DEFAULT_PREFIX):
         """Return a dict containing the prefix and semver of a SchemaVersionBase or str."""
+        if not schema_version:
+            raise ValueError("get_parts(cls, schema_version=__falsy__, default_prefix={default_prefix}")
         if isinstance(schema_version, SchemaVersionBase):
             return {"prefix": schema_version.prefix, "semver": str(schema_version.semver)}
         match = VERSION_PATTERN.match(str(schema_version))

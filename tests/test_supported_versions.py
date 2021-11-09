@@ -16,6 +16,7 @@ import pytest
 # the package rather than the underlying modules.
 from aktorz.model import SUPPORTED_VERSIONS, BaseModel
 
+from .util import finalize_version
 from .version_modules import CONFIG_DATA
 
 
@@ -108,7 +109,7 @@ class TestSupportedVersions:
         """
 
         assert version in [
-            self.finalize(v) for v in supported_versions
+            finalize_version(v) for v in supported_versions
         ], f"Module [{module.__name__}] implements unsupported version [{version}] and should be deleted."
 
     @pytest.mark.parametrize("version", [(version) for version in SUPPORTED_VERSIONS])
@@ -116,13 +117,5 @@ class TestSupportedVersions:
         """Verify that every supported version has an implementation module."""
 
         assert (
-            self.finalize(version) in implemented_versions
+            finalize_version(version) in implemented_versions
         ), f"Missing implementation for supported version [{version}]."
-
-    def finalize(self, v):
-        assert isinstance(v, str)
-        try:
-            i = v.index("-rc")
-            return v[0:i]
-        except ValueError:
-            return v

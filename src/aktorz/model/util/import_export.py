@@ -166,17 +166,20 @@ class ImportExport:
         Get the schema version of an input Model that is to be exported.
         """
 
+        if not model:
+            raise ValueError("get_schema_version(__falsy__)")
+
         # Avoid mypy complaint by using getattr()
         #   Value of type "Union[BaseVersionedModel, Dict[Any, Any]]" is not indexable
-        schema_version_field = getattr(model, "get")(self.schema_version_field)
+        schema_version = getattr(model, "get")(self.schema_version_field)
 
         if isinstance(model, dict):
-            return SchemaVersion.create(schema_version_field)
+            return SchemaVersion.create(schema_version)
 
-        if isinstance(schema_version_field, SchemaVersion):
-            return schema_version_field
+        if isinstance(schema_version, SchemaVersion):
+            return schema_version
 
-        return SchemaVersion.create(schema_version_field)
+        return SchemaVersion.create(schema_version)
 
     def set_schema_version(self, model):
         """
@@ -266,6 +269,11 @@ class Loader(ImportExport):
 
         # Convert the input to a dict
         raw_data = self.load_raw_data(input)
+
+        if not raw_data:
+            # If you want to deal with the case where load_raw_data() returns
+            # no data, override load_raw_data() in your subclass & do it there.
+            raise ValueError(f"{type(self)}.load_raw_data(...) -> __falsy__")
 
         # Extract the schema version from the incoming data.
         input_version = self.get_schema_version(model=raw_data)

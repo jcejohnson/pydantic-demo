@@ -74,7 +74,7 @@ def skip_incompatible_combinations(func):
         exporter = Exporter(version=schema_version)
         assert exporter
 
-        if not schema_version.can_read(supported_version) and not loader.can_load(supported_version):
+        if not schema_version.can_read(supported_version):
             m = (
                 f"Implementation version [{schema_version}] reports that it cannot "
                 f"read supported version [{supported_version}]."
@@ -82,7 +82,7 @@ def skip_incompatible_combinations(func):
             warnings.warn(m, ExpectedWarning)
             return pytest.skip(m)
 
-        if not schema_version.can_write(supported_version) and not exporter.can_export(supported_version):
+        if not schema_version.can_write(supported_version):
             m = (
                 f"Implementation version [{schema_version}] reports that it cannot "
                 f"write supported version [{supported_version}]."
@@ -97,6 +97,14 @@ def skip_incompatible_combinations(func):
             dotted_version = dotted_version[0 : dotted_version.index("-rc")]
             file_name = f"actor-data-{dotted_version}.json"
             data_path = Path(os.path.join(resource_path_root, file_name))
+
+            # If a release-candidate data file is empty or '{}\n' then it is
+            # OK to skip the version because we're still working on it.
+            if os.path.getsize(data_path) < 4:
+                m = f"Test data [{data_path}] is empty."
+                warnings.warn(m, ExpectedWarning)
+                return pytest.skip(m)
+
         assert data_path.exists()
 
         return func(

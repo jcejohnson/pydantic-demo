@@ -1,7 +1,9 @@
-from .base_test import BaseVersionModuleTest
 import pytest
 
 from aktorz.model import Loader
+
+from .base_test import BaseVersionModuleTest
+
 
 @pytest.mark.skip
 class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
@@ -18,3 +20,5 @@ class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
         test_file = resource_path_root / "actor-data-0.1.3.json"
 
         model = Loader().load(input=test_file)
+
+        assert model
