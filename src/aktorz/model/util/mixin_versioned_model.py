@@ -1,8 +1,3 @@
-"""
-Additional base models with conflicting dependencies or that otherwise don't
-make sense to belong to .base_model
-"""
-
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import validator
 

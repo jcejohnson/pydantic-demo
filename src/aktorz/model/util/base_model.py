@@ -15,8 +15,7 @@ class BaseModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):
 class BaseDictModel(DictLikeMixin, ValidationMixin, PydanticBaseModel):
     """
     Baseclass for a pydantic custom root model.
-    Adds dict-like behavior but not data.
-    Assumes self.__root__ is Mappable.
+    Adds dict-like behavior but not data (assumes self.__root__ is Mappable).
 
     Subclasses can override ___validate_item___ to validate keys and/or
     __validate_value__ to validate value types.
