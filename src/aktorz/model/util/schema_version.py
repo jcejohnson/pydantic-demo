@@ -67,6 +67,13 @@ class SchemaVersionBase(PydanticBaseModel):
     prefix: str = DEFAULT_PREFIX
     semver: SemVer = SemVer.NONE
 
+    class Config:
+        # json_encoders are only used by the class on which model.json() is
+        # invoked. If you have a class with a SchemaVersion element, you will
+        # need this same json_encoders=...
+        # See mixin_versioned_model.py
+        json_encoders = {SemVer: lambda v: str(v)}
+
     @validator("semver")
     @classmethod
     def validate_version(cls, v: Union[SemVer, str]):

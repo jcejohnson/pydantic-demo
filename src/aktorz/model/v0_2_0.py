@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 from pydantic import Field, conint
 
-from . import BaseDictModel, BaseListModel, BaseModel
+from . import BaseDictModel, BaseListModel, BaseModel, BaseVersionedModel
 from .v0_2_x import PersonId  # noqa: F401
 from .v0_2_x import ActorId, CharacterId, MovieId, MovieTitle, SchemaVersion, Year
 
@@ -108,9 +108,7 @@ class ActorsById(BaseDictModel):
     __root__: Dict[ActorId, Actor]
 
 
-class Model(BaseModel):
-
-    schema_version: SchemaVersion
+class Model(BaseVersionedModel):
 
     actors: ActorsById
     movies: MoviesById

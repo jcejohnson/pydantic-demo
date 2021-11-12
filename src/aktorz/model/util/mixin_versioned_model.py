@@ -18,6 +18,9 @@ class VersionedModelMixin(PydanticBaseModel):
     # 0.1.2 : SchemaVersion
     schema_version: SchemaVersion
 
+    class Config:
+        json_encoders = {SchemaVersion: lambda v: str(v)}
+
     # > 0.1.3
     # Use `pre=True` since we may be doing a type conversion.
     # Otherwise we will get a `value is not a valid dict (type=type_error.dict)`
