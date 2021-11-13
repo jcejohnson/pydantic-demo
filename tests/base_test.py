@@ -11,6 +11,7 @@ from pydantic import FilePath, ValidationError
 # the package rather than the underlying modules.
 from aktorz.model import Loader, SchemaVersion, SemVer
 
+V020 = SchemaVersion.create("v0.2.0")
 
 class ExpectedWarning(Warning):
     pass
@@ -131,7 +132,7 @@ class BaseVersionModuleTest(BaseTest):
         Some concrete test classes will (and some will not) have have a similar test.
         """
 
-        schema_version = self.__class__.VERSION
+        schema_version = SchemaVersion.create(self.__class__.VERSION)
         loader = Loader(version=schema_version)
 
         # Loader.load() returns a BaseVersionedModel.
@@ -141,7 +142,13 @@ class BaseVersionModuleTest(BaseTest):
         model = cast(Any, loader.load(input=actor_data_json))
 
         assert model.schema_version == schema_version
-        assert isinstance(model.schema_version, str)
+
+        # In v0.1.x a Model's schema_version is a string.
+        # After v0.1.x, schema_version is a SchemaVersion
+        if schema_version < V020:
+            assert isinstance(model.schema_version, str)
+        else:
+            assert isinstance(model.schema_version, SchemaVersion)
 
         # In v0.1.3 model.actors becomes an ActorsById instance
         # which is dict-like and responds to len()

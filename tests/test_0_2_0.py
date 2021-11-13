@@ -1,11 +1,11 @@
 import pytest
 
 from aktorz.model import Loader
+from aktorz.model.v0_2_0 import VERSION
 
 from .base_test import BaseVersionModuleTest
 
 
-@pytest.mark.skip
 class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
     """Schema Version 0.2.0 tests."""
 
