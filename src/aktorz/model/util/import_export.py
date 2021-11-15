@@ -11,7 +11,7 @@ from pathlib import Path, PosixPath
 from types import ModuleType as BaseModuleType
 from typing import TYPE_CHECKING, Optional, Union, cast
 
-from pydantic import Extra, FilePath, validate_arguments, validator
+from pydantic import Extra, FilePath, MissingError, validate_arguments, validator
 from pydantic.dataclasses import dataclass
 
 if TYPE_CHECKING:
@@ -48,11 +48,28 @@ class ModuleType(ArbitraryTypeMixin, BaseModuleType):
 class ImportExport:
     """Common behaviors for import (load) and Export (transmute)."""
 
+    # WARNING: The order of fields is important for proper validation.
+
+    # The Model field identifying the version implemented by the Model.
     schema_version_field: str = "schema_version"
+
+    # The Model version this instance (e.g. - Loader) will provide.
     version: Union[SchemaVersion, str] = cast(SchemaVersion, None)
+
+    # The package containing the module.
     package: Optional[str] = None
+
+    # The module containing the Model.
     module: Optional[ModuleType] = None
-    model: Optional[BaseModel] = None  # model may be versioned or unversioned.
+
+    # The Model implementing `version`.
+    # May be versioned or unversioned.
+    model: Optional[BaseModel] = None
+
+    # Populated by subclasses as necessary
+
+    # SchemaVersion.create(self.module.VERSION)
+    module_version: SchemaVersion = None
 
     @validator("version")
     @classmethod
@@ -81,11 +98,14 @@ class ImportExport:
         old_data = exporter.dict()
         """
 
-        print(values)
+        if "version" not in values:
+            raise MissingError(f"Missing `version` field on {cls} instance.")
+
+        # Get the value of the version field from the cls instance (e.g. - a Loader instance)
         schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
-        model_package = values["package"] if values["package"] else __package__.replace(".util", "")
+        model_package = values["package"] if values.get("package", None) else __package__.replace(".util", "")
 
         try:
             module = importlib.import_module(f".{schema_version.prefix}{version}", package=model_package)
@@ -109,6 +129,9 @@ class ImportExport:
     @classmethod
     def validate_model_field(cls, model, values) -> BaseVersionedModel:
         """Get the Model class from the module."""
+
+        if "module" not in values:
+            raise MissingError(f"Missing `module` field on {cls} instance.")
 
         model = getattr(values["module"], "Model")
         if issubclass(model, BaseVersionedModel):
@@ -276,19 +299,19 @@ class Loader(ImportExport):
             raise ValueError(f"{type(self)}.load_raw_data(...) -> __falsy__")
 
         # Extract the schema version from the incoming data.
-        input_version = self.get_schema_version(model=raw_data)
+        raw_data_version = self.get_schema_version(model=raw_data)
 
         # Validate that the incoming data's version satisfies `validate_version`.
         if not self.validate_version(
-            input_version=input_version,
+            input_version=raw_data_version,
             validate_version=cast(LoaderValidations, validate_version),
         ):
             raise ValueError(
-                f"Input schema version [{input_version}] does not satisfy loader validation [{validate_version}]."
+                f"Input schema version [{raw_data_version}] does not satisfy loader validation [{validate_version}]."
             )
 
         # Manipulate the input (if necessary) to make it compatible with the target Model
-        raw_data = self.make_compatible(data=raw_data)
+        raw_data = self.make_compatible(data=raw_data, data_version=raw_data_version)
 
         # Delegate to pydantic to create a Model from the raw data dict.
         model = self.materialze_model(data=raw_data)
@@ -298,7 +321,7 @@ class Loader(ImportExport):
 
         return model
 
-    def make_compatible(self, data: dict) -> dict:
+    def make_compatible(self, data: dict, data_version: SchemaVersion) -> dict:
         """
         Update `data` if necessary to make it compatible with with self.version.
 
@@ -335,7 +358,10 @@ class Loader(ImportExport):
 
     def validate_version(self, *, input_version: SchemaVersion, validate_version: LoaderValidations) -> bool:
         """
-        Verify that the input_version vs self.module's version satisfies `validate_version`
+        Verify that the input_version vs self.module's version satisfies `validate_version`.
+        The implementation module may provide can_read/can_write methods to determine if it is able
+        to read/write input_version. If these methods do not exist, we will call the can_read/can_write
+        methods of SchemaVersion(self.module.VERSION)
         """
 
         assert isinstance(validate_version, LoaderValidations)
@@ -343,38 +369,59 @@ class Loader(ImportExport):
         # Delegate to SchemaVersion.create() to convert (if necessary) the implementation module's
         # VERSION attribute to a SchemaVersion.
         version = str(getattr(self.module, "VERSION"))
-        module_version = SchemaVersion.create(version=version)
+        self.module_version = SchemaVersion.create(version=version)
 
         if validate_version == LoaderValidations.NONE:
             return True
 
         if validate_version == LoaderValidations.IDENTICAL:
-            if module_version != input_version:
+            if self.module_version != input_version:
                 raise ValueError(
-                    f"Input of version [{input_version}] does not match " f"Model version [{module_version}]."
+                    f"Input of version [{input_version}] does not match " f"Model version [{self.module_version}]."
                 )
 
         if validate_version == LoaderValidations.READABLE:
-            can_read = (
-                module_version.can_read if not hasattr(self.module, "can_read") else getattr(self.module, "can_read")
-            )
-            if not can_read(input_version):
+            if not self.can_read(input_version):
                 raise ValueError(
-                    f"Input of version [{input_version}] cannot be read by " f"Model version [{module_version}]."
+                    f"Input of version [{input_version}] cannot be read by " f"Model version [{self.module_version}]."
                 )
 
         if validate_version == LoaderValidations.WRITABLE:
-            can_write = (
-                module_version.can_write
-                if not hasattr(self.module, "can_write")
-                else getattr(self.module, "can_write")
-            )
-            if not can_write(input_version):
+            if not self.can_write(input_version):
                 raise ValueError(
-                    f"Input of version [{input_version}] cannot be written by " f"Model version [{module_version}]."
+                    f"Input of version [{input_version}] cannot be written by "
+                    f"Model version [{self.module_version}]."
                 )
 
         return True
+
+    def can_read(self, other: Union[SchemaVersion, str]):
+        """If self.module has a can_read() method, delegate to it else
+        delegate to self.module.VERSION.can_read()
+        You will often override this for "boundary" implementations.
+        (e.g. - so that v2.0.0 can read v1.last.version data)
+        """
+        can_read = (
+            # self.module.can_read or self.module_version.can_read
+            self.module_version.can_read
+            if not hasattr(self.module, "can_read")
+            else getattr(self.module, "can_read")
+        )
+        return can_read(other)
+
+    def can_write(self, other: Union[SchemaVersion, str]):
+        """If self.module has a can_write() method, delegate to it else
+        delegate to self.module.VERSION.can_write()
+        You will often override this for "boundary" implementations.
+        (e.g. - so that v2.0.0 can write v1.last.version data)
+        """
+        can_write = (
+            # self.module.can_write or self.module_version.can_write
+            self.module_version.can_write
+            if not hasattr(self.module, "can_write")
+            else getattr(self.module, "can_write")
+        )
+        return can_write(other)
 
     # #### Implementation details
 
@@ -500,9 +547,6 @@ class Exporter(ImportExport):
 
         # Convert the input to a dict and manipulate it (if necessary) to make it compatible with the target Model
         raw_data = self.make_compatible(model=input)
-        print("")
-        print(f"raw_data [{type(raw_data)}] ")
-        print(f"raw_data['{self.schema_version_field}'] [{raw_data[self.schema_version_field]}] ")
 
         # Delegate to pydantic to create a Model from the raw data dict.
         model = self.materialze_model(data=raw_data)

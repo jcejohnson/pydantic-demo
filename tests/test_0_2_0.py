@@ -15,10 +15,28 @@ class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
     TEST_FILE = "actor-data-0.2.0.json"
     VERSION = "v0.2.0"
 
+    def test_load_0_1_1(self, resource_path_root):
+
+        schema_version = self.__class__.VERSION
+        assert schema_version == VERSION  # Mostly to silence flake8
+
+        loader = Loader(version=schema_version)
+
+        test_file = resource_path_root / "actor-data-0.1.1.json"
+
+        model = loader.load(input=test_file)
+
+        assert model
+
     def test_load_0_1_3(self, resource_path_root):
+
+        schema_version = self.__class__.VERSION
+        assert schema_version == VERSION  # Mostly to silence flake8
+
+        loader = Loader(version=schema_version)
 
         test_file = resource_path_root / "actor-data-0.1.3.json"
 
-        model = Loader().load(input=test_file)
+        model = loader.load(input=test_file)
 
         assert model

@@ -13,6 +13,7 @@ from aktorz.model import Loader, SchemaVersion, SemVer
 
 V020 = SchemaVersion.create("v0.2.0")
 
+
 class ExpectedWarning(Warning):
     pass
 
@@ -245,10 +246,14 @@ class BaseVersionModuleTest(BaseTest):
         model = loader.load(input=actor_data_dict)
         json = model.json()
 
-        with pytest.raises(ValidationError) as exc_info:
-            Loader(version=SchemaVersion.create(v0_1_0.VERSION)).load(input=json)
-
-        self.verify_exception(request, exc_info)
+        # Models after v0.1.x cannot load v0.1.0 data
+        if schema_version < V020:
+            with pytest.raises(ValidationError) as exc_info:
+                Loader(version=SchemaVersion.create(v0_1_0.VERSION)).load(input=json)
+            self.verify_exception(request, exc_info)
+        else:
+            with pytest.raises(ValueError) as exc_info:
+                Loader(version=SchemaVersion.create(v0_1_0.VERSION)).load(input=json)
 
     def xtest_can_export_0_1_0(self, request, actor_data_dict: dict):
         """

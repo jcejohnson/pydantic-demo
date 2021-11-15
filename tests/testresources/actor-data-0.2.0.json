@@ -1,5 +1,19 @@
 {
-  "actors": {},
+  "actors": {
+    "charlie_chaplin": {
+      "birth_year": 1889,
+      "first_name": "Charlie",
+      "last_name": "Chaplin",
+      "movies": [],
+      "person_id": "charlie_chaplin"
+    },
+    "dwayne_johnson": {
+      "first_name": "Dwayne",
+      "last_name": "Johnson",
+      "movies": [],
+      "person_id": "dwayne_johnson"
+    }
+  },
   "movies": {},
   "schema_version": "v0.2.0"
 }
