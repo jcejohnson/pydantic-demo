@@ -12,6 +12,7 @@ from pydantic import FilePath, ValidationError
 from aktorz.model import Loader, SchemaVersion, SemVer
 
 V020 = SchemaVersion.create("v0.2.0")
+V030 = SchemaVersion.create("v0.3.0")
 
 
 class ExpectedWarning(Warning):
@@ -151,9 +152,19 @@ class BaseVersionModuleTest(BaseTest):
         else:
             assert isinstance(model.schema_version, SchemaVersion)
 
-        # In v0.1.3 model.actors becomes an ActorsById instance
-        # which is dict-like and responds to len()
-        assert len(model.actors) == 2
+        if schema_version < V020:
+            # In v0.1.3 model.actors becomes an ActorsById instance
+            # which is dict-like and responds to len()
+            assert len(model.actors) == 2
+        elif schema_version < V030:
+            # In v0.2.0 model.actors is now all humans.
+            assert len(model.actors) == 9
+        else:
+            # In v0.3.0 we replace model.actors with a list of person_id
+            #   who actually are actors and add model.people to track all
+            #   humans.
+            assert len(model.actors) == 2
+            assert len(model.people) == 9
 
         assert model.actors["charlie_chaplin"].birth_year == 1889
 

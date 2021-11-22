@@ -1,19 +1,138 @@
 {
-  "actors": {
-    "charlie_chaplin": {
-      "birth_year": 1889,
-      "first_name": "Charlie",
-      "last_name": "Chaplin",
-      "movies": [],
-      "person_id": "charlie_chaplin"
-    },
-    "dwayne_johnson": {
-      "first_name": "Dwayne",
-      "last_name": "Johnson",
-      "movies": [],
-      "person_id": "dwayne_johnson"
-    }
-  },
-  "movies": {},
-  "schema_version": "v0.2.0"
+	"actors": {
+		"charlie_chaplin": {
+			"birth_year": 1889,
+			"first_name": "Charlie",
+			"gender": "M",
+			"last_name": "Chaplin",
+			"movies": [
+				"a_woman_of_paris",
+				"modern_times",
+				"the_kid"
+			],
+			"person_id": "charlie_chaplin",
+			"personality": "funny",
+			"spouses": [
+				"lita_grey",
+				"mildred_harris",
+				"oona_oneill",
+				"paulette_goddard"
+			]
+		},
+		"dwayne_johnson": {
+			"birth_year": 1972,
+			"first_name": "Dwayne",
+			"gender": "M",
+			"hobbies": {},
+			"home_town": "Hayward, CA USA",
+			"last_name": "Johnson",
+			"movies": [
+				"fast_five"
+			],
+			"person_id": "dwayne_johnson"
+		},
+		"jordana_brewster": {
+			"first_name": "jordana",
+			"last_name": "brewster",
+			"movies": [],
+			"person_id": "jordana_brewster"
+		},
+		"lita_grey": {
+			"birth_year": 1908,
+			"first_name": "Lita",
+			"gender": "F",
+			"last_name": "Grey",
+			"movies": [],
+			"person_id": "lita_grey",
+			"spouses": [
+				"charlie_chaplin"
+			]
+		},
+		"mildred_harris": {
+			"birth_year": 1901,
+			"first_name": "Mildred",
+			"gender": "F",
+			"last_name": "Harris",
+			"movies": [],
+			"person_id": "mildred_harris",
+			"spouses": [
+				"charlie_chaplin"
+			]
+		},
+		"oona_oneill": {
+			"birth_year": 1925,
+			"first_name": "Oona",
+			"gender": "F",
+			"last_name": "O'Neill",
+			"movies": [],
+			"person_id": "oona_oneill",
+			"spouses": [
+				"charlie_chaplin"
+			]
+		},
+		"paul_walker": {
+			"first_name": "paul",
+			"last_name": "walker",
+			"movies": [],
+			"person_id": "paul_walker"
+		},
+		"paulette_goddard": {
+			"birth_year": 1910,
+			"first_name": "Paulette",
+			"gender": "F",
+			"last_name": "Goddard",
+			"movies": [],
+			"person_id": "paulette_goddard",
+			"spouses": [
+				"charlie_chaplin"
+			]
+		},
+		"vin_diesel": {
+			"first_name": "vin",
+			"last_name": "diesel",
+			"movies": [],
+			"person_id": "vin_diesel"
+		}
+	},
+	"movies": {
+		"a_woman_of_paris": {
+			"movie_id": "a_woman_of_paris",
+			"title": "A Woman of Paris",
+			"year": 1923
+		},
+		"fast_five": {
+			"cast": {
+				"jordana_brewster": {
+					"actor_id": "jordana_brewster",
+					"character_id": "mia_toretto"
+				},
+				"paul_walker": {
+					"actor_id": "paul_walker",
+					"character_id": "brian_oconner",
+					"salary": 15
+				},
+				"vin_diesel": {
+					"actor_id": "vin_diesel",
+					"character_id": "dominic_toretto",
+					"salary": 15
+				}
+			},
+			"gross": 625,
+			"movie_id": "fast_five",
+			"title": "Fast Five"
+		},
+		"modern_times": {
+			"budget": 1500000,
+			"movie_id": "modern_times",
+			"run_time_minutes": 87,
+			"title": "Modern Times",
+			"year": 1936
+		},
+		"the_kid": {
+			"movie_id": "the_kid",
+			"title": "The Kid",
+			"year": 1921
+		}
+	},
+	"schema_version": "v0.2.0"
 }
