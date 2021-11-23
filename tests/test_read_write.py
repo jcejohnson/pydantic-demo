@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from .base_test import BaseTest, ExpectedWarning
+from .util import finalize_version
 from .version_modules import CONFIG_DATA
 
 # We are testing the public interface so we will import from
@@ -202,15 +203,22 @@ class TestReadWrite(BaseTest):
         # Because the model may have default values not present in the input we cannot assert
         # that the raw input data and parsed model data are identical. The best we can do at
         # this level is ensure that the schema version matches what we expected to read.
+        # We use finalize_version() in case supported_version is a release candidate. It isn't
+        # very clever (it is effectively 's/-rc.*//') but it is good enough for what we need.
 
         if implemented_version >= SchemaVersion(prefix="v", semver="0.2.0"):
             assert isinstance(data, VersionedModelMixin)
             assert isinstance(data.schema_version, SchemaVersion)
-            assert data.schema_version == supported_version  # because update_version=False
+            # because update_version=False
+            assert data.schema_version in [supported_version, finalize_version(str(supported_version))]
         else:
             assert isinstance(data, BaseModel)
             assert not isinstance(data.schema_version, SchemaVersion)
-            assert SchemaVersion.create(data.schema_version) == supported_version  # because update_version=False
+            # because update_version=False
+            assert SchemaVersion.create(data.schema_version) in [
+                supported_version,
+                finalize_version(str(supported_version)),
+            ]
 
         # Serialization to json should not throw any exceptions.
         as_json = data.json()  # Delegates to data.dict()

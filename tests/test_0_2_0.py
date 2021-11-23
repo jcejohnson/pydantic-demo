@@ -28,7 +28,6 @@ class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
         with pytest.raises(ValueError) as exc_info:
             model = loader.load(input=test_file)
 
-
     def test_load_0_1_3(self, resource_path_root):
 
         schema_version = self.__class__.VERSION
@@ -48,6 +47,6 @@ class Test_0_2_0(BaseVersionModuleTest):  # noqa: N801
         #     import json
         #     json.dump(model.dict(by_alias=True, exclude_none=True, exclude_defaults=True), f, indent='\t', sort_keys=True)
 
-        # TODO: 
+        # TODO:
         # - Manually verify that the generated v0.2.0 data is valid (do this once so that we can use it as legit test data going forward)
         # - Load the v0.2.0 test data and compare it to the model's data

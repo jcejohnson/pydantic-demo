@@ -1,5 +1,9 @@
 def finalize_version(v):
-    # Remove `-rc#` from a version string.
+    """
+    Remove `-rc#` from a version string.
+    A more realistic implementation would convert `v` to a SchemaVersion
+    instance and use schema_version.semver.finalize_version().
+    """
     assert isinstance(v, str)
     try:
         i = v.index("-rc")
