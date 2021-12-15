@@ -105,7 +105,15 @@ class ImportExport:
         schema_version = cast(SchemaVersion, values["version"])
         version = str(schema_version.semver).replace(".", "_")
 
-        model_package = values["package"] if values.get("package", None) else __package__.replace(".util", "")
+        # If no package was provided, assume that the Model implementation is in the same
+        # module as the Loader.
+        model_package = values.get("package", None)
+        if not model_package:
+            if hasattr(cls, "default_package"):
+                model_package = getattr(cls, "default_package")
+            else:
+                model_package = importlib.import_module(cls.__module__).__package__
+                raise Exception(cls)
 
         try:
             module = importlib.import_module(f".{schema_version.prefix}{version}", package=model_package)
@@ -152,37 +160,12 @@ class ImportExport:
         return model
 
     @classmethod
-    def create(cls, *args, version=None, other=None):
+    def create(cls, *, version):
         """
-        Create a Loader/Exporter with either a version or another Loader/Exporter instance.
+        Extension point for creating Loader and Exporter subclass instances.
         """
 
-        if args:
-            if isinstance(args[0], str):
-                version = args[0]
-            elif isinstance(args[0], SchemaVersion):
-                version = args[0]
-            else:
-                other = args[0]
-
-        if version:
-            return cls(version=SchemaVersion.create(version))
-
-        assert issubclass(cls, type(other))
-        assert other.module
-        assert other.model
-        assert isinstance(other.module, BaseModuleType)
-
-        if isinstance(other.model, BaseVersionedModel):
-            return cls(
-                version=SchemaVersion.create(other.version),
-                module=cast(ModuleType, other.module),
-                model=cast(BaseVersionedModel, other.model),
-            )
-
-        # If other.model is not a BaseVersionedModel then we will let the new
-        # instance's validate_model_field() figure it out.
-        return cls(version=SchemaVersion.create(other.version), module=cast(ModuleType, other.module))
+        return cls(version=SchemaVersion.create(version))
 
     def get_schema_version(self, model: Union[BaseModel, dict]) -> SchemaVersion:
         """
@@ -274,7 +257,7 @@ class Loader(ImportExport):
 
         if hasattr(self.module, "Loader"):
             loader = cast(ImportExport, getattr(self.module, "Loader"))
-            return loader.create(self)
+            return loader.create(version=self.version)
 
         return self
 
@@ -511,7 +494,7 @@ class Exporter(ImportExport):
 
         if hasattr(self.module, "Exporter"):
             exporter = cast(ImportExport, getattr(self.module, "Exporter"))
-            return exporter.create(self)
+            return exporter.create(version=self.version)
 
         return self
 

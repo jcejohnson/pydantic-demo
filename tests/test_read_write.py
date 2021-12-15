@@ -32,6 +32,10 @@ I need to extract the similar code from test_0_1_2 for reusability.
 """
 
 
+# Tell Loader where to find models
+Exporter.default_package = "aktorz.model"
+
+
 def setup_module(module):
     basename = os.path.join(os.path.dirname(module.__file__), "testresources", "actor-data-0.1.")
     source = f"{basename}1.json"
@@ -128,14 +132,8 @@ class TestImportExportBaseclass(BaseTest):
         Loader(version=version)
         loader = Loader(version=SchemaVersion.create(version))
 
-        assert Loader.create(version) == loader
-        assert Loader.create(SchemaVersion.create(version)) == loader
         assert Loader.create(version=version) == loader
         assert Loader.create(version=SchemaVersion.create(version)) == loader
-
-        assert Loader.create(loader) == loader
-        assert Loader.create(other=loader) == loader
-        assert Loader.create(other=Loader.create(version)) == loader
 
     def test_exporter_create(self):
 
@@ -143,7 +141,6 @@ class TestImportExportBaseclass(BaseTest):
         Exporter(version=version)
         exporter = Exporter(version=SchemaVersion.create(version))
 
-        assert Exporter.create(version) == exporter
         assert Exporter.create(version=version) == exporter
         assert Exporter.create(version=SchemaVersion.create(version)) == exporter
 

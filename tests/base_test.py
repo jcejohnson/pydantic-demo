@@ -14,6 +14,11 @@ from aktorz.model import Loader, SchemaVersion, SemVer
 V020 = SchemaVersion.create("v0.2.0")
 V030 = SchemaVersion.create("v0.3.0")
 
+from aktorz.model import Loader
+
+# Tell Loader where to find models
+Loader.default_package = "aktorz.model"
+
 
 class ExpectedWarning(Warning):
     pass
