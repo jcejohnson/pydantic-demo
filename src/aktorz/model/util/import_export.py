@@ -9,7 +9,7 @@ import warnings
 from enum import Enum, auto
 from pathlib import Path, PosixPath
 from types import ModuleType as BaseModuleType
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union, cast, Any
 
 from pydantic import Extra, FilePath, MissingError, validate_arguments, validator
 from pydantic.dataclasses import dataclass
@@ -113,7 +113,6 @@ class ImportExport:
                 model_package = getattr(cls, "default_package")
             else:
                 model_package = importlib.import_module(cls.__module__).__package__
-                raise Exception(cls)
 
         try:
             module = importlib.import_module(f".{schema_version.prefix}{version}", package=model_package)
@@ -214,11 +213,12 @@ LoaderType = None
 class Loader(ImportExport):
     """Load data and create Models."""
 
-    @validate_arguments
+    # I would like to use @validate_arguments here but that has the nasty side-effect
+    # of casting `input` to the wrong type if, for instance, it is a BaseModel.
     def load(
         self,
         *,
-        input: Union[str, dict, FilePath],
+        input: Union[str, dict, Path],
         validate_version: Optional[LoaderValidations] = LoaderValidations.READABLE,
         update_version: Optional[bool] = True,
     ) -> BaseVersionedModel:
@@ -239,11 +239,14 @@ class Loader(ImportExport):
             Model = loader.model()
             model = Model(**input)
 
-        input : json string, dict or FilePath
+        input : json string, dict or Path
 
         TODO: Document this properly.
 
         """
+        if type(input) not in [str, dict] and not isinstance(input, Path):
+            # Old-school type checking. See the note above about @validate_arguments
+            raise ValueError(f"Cannot load {type(input)}. Must be str, dict or Path.")
         return self.loader().load_input(input=input, validate_version=validate_version, update_version=update_version)
 
     def loader(self):
